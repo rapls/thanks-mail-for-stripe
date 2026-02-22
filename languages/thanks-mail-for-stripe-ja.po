@@ -1,0 +1,375 @@
+# Japanese translation for Thanks Mail for Stripe plugin.
+# Copyright (C) 2024 Rapls Works
+# This file is distributed under the same license as the Thanks Mail for Stripe plugin.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Thanks Mail for Stripe 1.1.0\n"
+"Report-Msgid-Bugs-To: https://raplsworks.com/\n"
+"POT-Creation-Date: 2024-12-24 00:00:00+0000\n"
+"PO-Revision-Date: 2024-12-24 00:00:00+0000\n"
+"Last-Translator: Rapls Works <info@raplsworks.com>\n"
+"Language-Team: Japanese\n"
+"Language: ja\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: Poedit 3.4\n"
+
+#: thanks-mail-for-stripe.php:250
+#: thanks-mail-for-stripe.php:251
+msgid "Thanks Mail for Stripe"
+msgstr "Thanks Mail for Stripe"
+
+#: thanks-mail-for-stripe.php:266
+msgid "Settings"
+msgstr "設定"
+
+#: templates/admin-settings.php:9
+msgid "Thanks Mail for Stripe Settings"
+msgstr "Thanks Mail for Stripe 設定"
+
+#: templates/admin-settings.php:13
+msgid "Quick Setup Guide"
+msgstr "クイックセットアップガイド"
+
+#: templates/admin-settings.php:15
+msgid "Copy the Webhook URL below and register it in Stripe Dashboard → Developers → Webhooks → Add endpoint"
+msgstr "下記の Webhook URL をコピーし、「Stripe ダッシュボード → Developers → Webhooks → Add endpoint」に登録してください"
+
+#: templates/admin-settings.php:16
+msgid "Select events: checkout.session.completed and checkout.session.async_payment_succeeded"
+msgstr "イベントを選択: checkout.session.completed と checkout.session.async_payment_succeeded"
+
+#: templates/admin-settings.php:17
+msgid "Copy the Webhook Signing Secret (whsec_...) and paste it below"
+msgstr "Webhook 署名シークレット (whsec_...) をコピーして下記に貼り付けてください"
+
+#: templates/admin-settings.php:18
+msgid "Enter your Payment Link ID (plink_...) - found in the Payment Link URL in Stripe Dashboard"
+msgstr "Payment Link ID (plink_...) を入力してください - Stripe ダッシュボードの Payment Link URL から確認できます"
+
+#: templates/admin-settings.php:19
+msgid "Customize your email templates and save"
+msgstr "メールテンプレートをカスタマイズして保存してください"
+
+#: templates/admin-settings.php:20
+msgid "Send a test email to verify your settings"
+msgstr "テストメールを送信して設定を確認してください"
+
+#: templates/admin-settings.php:23
+msgid "Important:"
+msgstr "重要:"
+
+#: templates/admin-settings.php:24
+msgid "If you're using a security plugin (Wordfence, etc.) or server WAF, you may need to whitelist the Webhook URL to allow Stripe's requests."
+msgstr "セキュリティプラグイン (Wordfence など) やサーバー WAF を使用している場合、Stripe からのリクエストを許可するために Webhook URL をホワイトリストに追加する必要があります。"
+
+#: templates/admin-settings.php:145
+msgid "Use your own domain email (e.g., info@yoursite.com). Gmail or other free email addresses may cause delivery failures due to SPF/DKIM authentication."
+msgstr "必ず自分のドメインのメールアドレス (例: info@yoursite.com) を使用してください。Gmail などのフリーメールは SPF/DKIM 認証の問題でメールが届かない原因になります。"
+
+#: templates/admin-settings.php:16
+msgid "Status"
+msgstr "ステータス"
+
+#: templates/admin-settings.php:19
+msgid "Enable"
+msgstr "有効化"
+
+#: templates/admin-settings.php:23
+msgid "Enable thank-you email sending"
+msgstr "サンクスメールの送信を有効にする"
+
+#: templates/admin-settings.php:28
+msgid "Webhook URL"
+msgstr "Webhook URL"
+
+#: templates/admin-settings.php:32
+msgid "Copy"
+msgstr "コピー"
+
+#: templates/admin-settings.php:35
+msgid "Register this URL in Stripe Dashboard → Developers → Webhooks"
+msgstr "この URL を「Stripe ダッシュボード → Developers → Webhooks」に登録してください"
+
+#: templates/admin-settings.php:40
+msgid "Emails Sent"
+msgstr "送信済みメール数"
+
+#: templates/admin-settings.php:43
+msgid "emails"
+msgstr "件"
+
+#: templates/admin-settings.php:51
+msgid "Stripe Settings"
+msgstr "Stripe 設定"
+
+#: templates/admin-settings.php:55
+msgid "Webhook Signing Secret"
+msgstr "Webhook 署名シークレット"
+
+#: templates/admin-settings.php:62
+msgid "Show"
+msgstr "表示"
+
+#: templates/admin-settings.php:65
+msgid "Found in Stripe Dashboard → Developers → Webhooks → Your endpoint → Signing secret"
+msgstr "「Stripe ダッシュボード → Developers → Webhooks」 → エンドポイント →「Signing secret」で確認できます"
+
+#: templates/admin-settings.php
+msgid "Payment Link ID #1"
+msgstr "Payment Link ID その1"
+
+#: templates/admin-settings.php
+msgid "Payment Link ID #2"
+msgstr "Payment Link ID その2"
+
+#: templates/admin-settings.php
+msgid "Payment Link ID for Japanese customers (e.g., plink_1234567890)"
+msgstr "日本語顧客向けの Payment Link ID (例: plink_1234567890)"
+
+#: templates/admin-settings.php
+msgid "Payment Link ID for English customers (optional)"
+msgstr "英語顧客向けの Payment Link ID (オプション)"
+
+#: templates/admin-settings.php
+msgid "Payment Link ID for English customers (e.g., plink_1234567890)"
+msgstr "英語顧客向けの Payment Link ID (例: plink_1234567890)"
+
+#: templates/admin-settings.php
+msgid "Payment Link ID for Japanese customers (optional)"
+msgstr "日本語顧客向けの Payment Link ID (オプション)"
+
+#: templates/admin-settings.php:100
+msgid "General Settings"
+msgstr "一般設定"
+
+#: templates/admin-settings.php:104
+msgid "Brand Name"
+msgstr "ブランド名"
+
+#: templates/admin-settings.php:111
+msgid "Used in email subject and body ({brand} placeholder)"
+msgstr "メールの件名と本文で使用されます ({brand} プレースホルダー)"
+
+#: templates/admin-settings.php:117
+msgid "From Email"
+msgstr "送信元メールアドレス"
+
+#: templates/admin-settings.php:124
+msgid "Sender email address (e.g., info@yoursite.com)"
+msgstr "送信者のメールアドレス (例: info@yoursite.com)"
+
+#: templates/admin-settings.php:130
+msgid "From Name"
+msgstr "送信者名"
+
+#: templates/admin-settings.php:137
+msgid "Sender name displayed in email client"
+msgstr "メールクライアントに表示される送信者名"
+
+#: templates/admin-settings.php:143
+msgid "Reply-To Email"
+msgstr "返信先メールアドレス"
+
+#: templates/admin-settings.php:150
+msgid "Replies to thank-you emails will go to this address"
+msgstr "サンクスメールへの返信がこのアドレスに届きます"
+
+#: templates/admin-settings.php
+msgid "Email Template #1"
+msgstr "メールテンプレート その1"
+
+#: templates/admin-settings.php
+msgid "Email Template #2"
+msgstr "メールテンプレート その2"
+
+#: templates/admin-settings.php
+msgid "Subject"
+msgstr "件名"
+
+#: templates/admin-settings.php
+msgid "Body"
+msgstr "本文"
+
+#: templates/admin-settings.php:211
+msgid "Available Placeholders"
+msgstr "利用可能なプレースホルダー"
+
+#: templates/admin-settings.php:215
+msgid "Placeholder"
+msgstr "プレースホルダー"
+
+#: templates/admin-settings.php:216
+msgid "Description"
+msgstr "説明"
+
+#: templates/admin-settings.php:222
+msgid "Brand name"
+msgstr "ブランド名"
+
+#: templates/admin-settings.php:226
+msgid "Stripe Checkout Session ID (for reference)"
+msgstr "Stripe Checkout Session ID (照合用)"
+
+#: templates/admin-settings.php:230
+msgid "Customer email address"
+msgstr "顧客のメールアドレス"
+
+#: templates/admin-settings.php:236
+msgid "Save Settings"
+msgstr "設定を保存"
+
+#: templates/admin-settings.php:241
+msgid "Send Test Email"
+msgstr "テストメールを送信"
+
+#: templates/admin-settings.php:245
+msgid "Email Address"
+msgstr "メールアドレス"
+
+#: templates/admin-settings.php
+msgid "Template"
+msgstr "テンプレート"
+
+#: templates/admin-settings.php
+msgid "Template #1"
+msgstr "その1"
+
+#: templates/admin-settings.php
+msgid "Template #2"
+msgstr "その2"
+
+#: templates/admin-settings.php:276
+msgid "Recent Sent Emails"
+msgstr "最近の送信履歴"
+
+#: templates/admin-settings.php:281
+msgid "No emails sent yet."
+msgstr "まだメールは送信されていません。"
+
+#: templates/admin-settings.php:286
+msgid "Date"
+msgstr "日時"
+
+#: templates/admin-settings.php:287
+msgid "Email"
+msgstr "メールアドレス"
+
+#: templates/admin-settings.php:289
+msgid "Session ID"
+msgstr "セッション ID"
+
+#: templates/admin-settings.php:313
+msgid "Copied!"
+msgstr "コピーしました !"
+
+#: templates/admin-settings.php:322
+msgid "Hide"
+msgstr "非表示"
+
+#: templates/admin-settings.php:333
+msgid "Please enter an email address"
+msgstr "メールアドレスを入力してください"
+
+#: templates/admin-settings.php:338
+msgid "Sending..."
+msgstr "送信中 ..."
+
+#: templates/admin-settings.php:352
+msgid "Test email sent!"
+msgstr "テストメールを送信しました !"
+
+#: templates/admin-settings.php:354
+msgid "Failed to send email"
+msgstr "メール送信に失敗しました"
+
+#: templates/admin-settings.php:358
+msgid "Error occurred"
+msgstr "エラーが発生しました"
+
+#: templates/admin-settings.php:329
+msgid "Support This Plugin"
+msgstr "プラグインをサポート"
+
+#: templates/admin-settings.php:330
+msgid "If you find this plugin useful, please consider supporting its development."
+msgstr "このプラグインが役に立った場合は、開発のサポートをご検討ください。"
+
+#: templates/admin-settings.php
+msgid "Reset Settings"
+msgstr "設定をリセット"
+
+#: templates/admin-settings.php
+msgid "Reset all settings to their default values."
+msgstr "すべての設定をデフォルト値にリセットします。"
+
+#: templates/admin-settings.php
+msgid "Are you sure you want to reset all settings to defaults?"
+msgstr "すべての設定をデフォルトに戻しますか ?"
+
+#: templates/admin-settings.php
+msgid "Settings have been reset."
+msgstr "設定をリセットしました。"
+
+#: templates/admin-settings.php
+msgid "Email Templates"
+msgstr "メールテンプレート"
+
+#: templates/admin-settings.php
+msgid "You can configure up to %d email templates. Each template can be linked to a specific Stripe Payment Link ID."
+msgstr "最大 %d 個のメールテンプレートを設定できます。各テンプレートは特定の Stripe Payment Link ID に紐付けることができます。"
+
+#: templates/admin-settings.php
+msgid "Template name"
+msgstr "テンプレート名"
+
+#: templates/admin-settings.php
+msgid "— Locale —"
+msgstr "— 言語 —"
+
+#: templates/admin-settings.php
+msgid "Delete"
+msgstr "削除"
+
+#: templates/admin-settings.php
+msgid "Payment Link ID"
+msgstr "Payment Link ID"
+
+#: templates/admin-settings.php
+msgid "Stripe Payment Link ID (e.g., plink_1234567890)"
+msgstr "Stripe Payment Link ID (例: plink_1234567890)"
+
+#: templates/admin-settings.php
+msgid "Add Template"
+msgstr "テンプレートを追加"
+
+#: thanks-mail-for-stripe.php
+msgid "Are you sure you want to delete this template?"
+msgstr "このテンプレートを削除しますか？"
+
+#: thanks-mail-for-stripe.php
+msgid "Maximum number of templates reached."
+msgstr "テンプレートの最大数に達しました。"
+
+#: thanks-mail-for-stripe.php
+msgid "At least one template is required."
+msgstr "テンプレートは最低1つ必要です。"
+
+#: templates/admin-settings.php
+msgid "Reset to default"
+msgstr "初期値に戻す"
+
+#: thanks-mail-for-stripe.php
+msgid "Are you sure you want to reset this template to defaults?"
+msgstr "このテンプレートを初期値に戻しますか？"
+
+#: templates/admin-settings.php
+msgid "Enjoying this plugin? A %s would be greatly appreciated!"
+msgstr "このプラグインを気に入っていただけましたか？%s いただけると励みになります！"
+
+#: templates/admin-settings.php
+msgid "review on WordPress.org"
+msgstr "WordPress.org でのレビュー"

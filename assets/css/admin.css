@@ -1,0 +1,184 @@
+/**
+ * Stripe Thanks Mail - Admin Styles
+ */
+
+.stm-admin {
+    max-width: 900px;
+}
+
+.stm-card {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.stm-card h2 {
+    margin-top: 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.stm-status-card {
+    background: linear-gradient(135deg, #f0f7ff 0%, #fff 100%);
+    border-left: 4px solid #2271b1;
+}
+
+.stm-help-card {
+    background: #f0f7ff;
+    border-left: 4px solid #0073aa;
+}
+
+.stm-help-card ol {
+    margin: 0 0 15px 0;
+    padding-left: 20px;
+}
+
+.stm-help-card ol li {
+    margin-bottom: 8px;
+    line-height: 1.6;
+}
+
+.stm-help-card .description {
+    margin-top: 10px;
+    padding: 10px;
+    background: #fff3cd;
+    border-left: 3px solid #ffc107;
+    font-style: normal;
+}
+
+.stm-test-card {
+    background: #fffbeb;
+    border-left: 4px solid #f59e0b;
+}
+
+.stm-support-card {
+    background: #fff;
+    border-left: 4px solid #5f7fff;
+    text-align: center;
+}
+
+.stm-support-card h2 {
+    border-bottom: none;
+}
+
+.stm-support-card p {
+    margin-bottom: 15px;
+    color: #555;
+}
+
+.stm-support-card a.button {
+    outline: none;
+    box-shadow: none;
+    display: inline-block;
+    transition: opacity 0.2s ease;
+}
+
+.stm-support-card a.button:hover,
+.stm-support-card a.button:focus {
+    outline: none;
+    box-shadow: none;
+    opacity: 0.7;
+}
+
+.tmfs-review-link {
+    margin-top: 12px;
+    color: #666;
+    font-size: 13px;
+}
+
+.tmfs-review-link a {
+    color: #2271b1;
+    text-decoration: none;
+}
+
+.tmfs-review-link a:hover {
+    color: #135e96;
+}
+
+.stm-webhook-url {
+    display: inline-block;
+    padding: 8px 12px;
+    background: #f6f7f7;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 13px;
+    word-break: break-all;
+    max-width: 500px;
+}
+
+.stm-copy-btn {
+    margin-left: 8px !important;
+}
+
+.form-table th {
+    width: 200px;
+}
+
+.form-table textarea.code {
+    font-family: Consolas, Monaco, monospace;
+    font-size: 13px;
+}
+
+#stm_test_status {
+    margin-left: 10px;
+}
+
+/* Template cards */
+.stm-template-card {
+    border-left: 4px solid #2271b1;
+}
+
+.stm-template-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.tmfs-template-label {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 4px 8px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+}
+
+.tmfs-delete-template {
+    color: #d63638 !important;
+    border-color: #d63638 !important;
+    font-size: 16px !important;
+    line-height: 1 !important;
+    min-width: 28px;
+}
+
+.tmfs-template-footer {
+    margin: 0;
+    padding-top: 8px;
+    border-top: 1px solid #eee;
+    text-align: right;
+}
+
+/* Responsive */
+@media screen and (max-width: 782px) {
+    .stm-webhook-url {
+        max-width: 100%;
+        font-size: 11px;
+    }
+
+    .form-table th {
+        width: auto;
+    }
+
+    .stm-template-header {
+        flex-wrap: wrap;
+    }
+
+    .tmfs-template-label {
+        min-width: 150px;
+    }
+}

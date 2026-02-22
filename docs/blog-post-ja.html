@@ -1,0 +1,325 @@
+<h2>PLUGIN</h2>
+Thanks Mail for Stripeは、Stripe Payment Linksでの購入完了時に自動でサンクスメール（お礼メール）を送信するWordPressプラグインです。
+
+Zapier、Make、IFTTTなどの外部サービスは不要で、Stripeのwebhookを直接受信してメールを送信します。デジタル商品の販売、ソフトウェアライセンスの発行、サービス予約の確認など、様々なシーンで活用できます。
+
+<strong>ダウンロード：</strong>
+WordPress.org プラグインページ （準備中）
+<div class="alert-box common-icon-box">このプラグインは現在WordPress.orgにて審査待ちです。</div>
+<h2>DEMO</h2>
+Stripe Payment Linkで決済が完了すると、自動的にサンクスメールが送信されます。
+
+<img class="alignnone size-medium wp-image-116" src="https://raplsworks.com/wp-content/uploads/2025/12/5c85f21d24ca3d11b358f1e93e5863e8-300x183.png" alt="" width="300" height="183" />
+
+テンプレートごとにPayment Link IDを紐付けておけば、どのリンクから購入されたかを自動判定して適切なテンプレートでメールを送信します。テンプレートは最大10個まで自由に追加・削除できます。
+<h2>INSTALLATION</h2>
+<ol>
+ 	<li>プラグインをダウンロードし、<code>/wp-content/plugins/</code>ディレクトリにアップロードします</li>
+ 	<li>WordPress管理画面の「プラグイン」メニューからプラグインを有効化します</li>
+ 	<li>「設定」→「Thanks Mail for Stripe」で各種設定を行います</li>
+ 	<li>表示されるWebhook URLをStripeダッシュボードに登録します</li>
+ 	<li>Webhook署名シークレットとPayment Link IDを設定します</li>
+ 	<li>テストメールを送信して動作を確認します</li>
+</ol>
+<strong>サーバー要件：</strong>
+<ul>
+ 	<li>WordPress 5.0以上</li>
+ 	<li>PHP 7.4以上</li>
+ 	<li>SSL証明書（HTTPS必須）</li>
+ 	<li>SMTPプラグイン推奨（メール到達率向上のため）</li>
+</ul>
+<h2>FEATURES</h2>
+<h3>1. Webhook経由の自動メール送信</h3>
+Stripeからwebhookイベント（<code>checkout.session.completed</code>）を受信すると、自動的にサンクスメールを送信します。外部サービスは一切不要です。
+<h3>2. 可変テンプレート（最大10個）</h3>
+メールテンプレートを最大10個まで自由に追加・削除できます。各テンプレートにはラベル、言語（locale）、Payment Link ID、件名、本文を設定でき、管理画面から簡単にカスタマイズ可能です。テンプレートごとに初期値に戻すボタンも用意されています。
+<h3>3. Payment Link IDによるテンプレート自動判定</h3>
+各テンプレートにStripe Payment Link IDを紐付けておくことで、どのリンクから購入されたかを判定し、適切なテンプレートでメールを送信します。Payment Link IDにマッチしない場合は、locale設定によるフォールバック判定を行います。
+<h3>4. 二重送信防止（冪等性）</h3>
+StripeはWebhookをリトライすることがあります。同じ決済に対して複数回メールを送信しないよう、Checkout Session IDをデータベースに保存して重複を防止します。
+<h3>5. Webhook署名検証</h3>
+Stripeから送られてくるWebhookが本物かどうかを、HMAC-SHA256署名で検証します。なりすましリクエストを確実にブロックします。
+<h3>6. テストメール機能</h3>
+設定が正しく動作するか、実際にテストメールを送信して確認できます。テスト決済をしなくても動作確認が可能です。
+<h2>SETTINGS</h2>
+<h3>Stripe設定</h3>
+<table>
+<tbody>
+<tr>
+<th>設定項目</th>
+<th>説明</th>
+</tr>
+<tr>
+<td>Webhook署名シークレット</td>
+<td>Stripeダッシュボードで取得した<code>whsec_...</code>を入力</td>
+</tr>
+</tbody>
+</table>
+<h3>一般設定</h3>
+<table>
+<tbody>
+<tr>
+<th>設定項目</th>
+<th>説明</th>
+</tr>
+<tr>
+<td>ブランド名</td>
+<td>メール内の{brand}に置換される名前</td>
+</tr>
+<tr>
+<td>送信元メールアドレス</td>
+<td>Fromに表示されるメールアドレス
+<strong style="color: #d63638;">※必ず自分のドメインのメールアドレスを使用してください</strong></td>
+</tr>
+<tr>
+<td>送信者名</td>
+<td>Fromに表示される名前</td>
+</tr>
+<tr>
+<td>返信先メールアドレス</td>
+<td>Reply-Toヘッダに設定（Gmail等でもOK）</td>
+</tr>
+</tbody>
+</table>
+<h3>送信元メールアドレスの重要な注意</h3>
+<strong style="color: #d63638;">送信元メールアドレスには、必ず自分のドメインのメールアドレスを設定してください。</strong>
+<ul>
+ 	<li><strong>OK：</strong> info@yoursite.com, support@yoursite.com</li>
+ 	<li><strong>NG：</strong> yourname@gmail.com, yourname@yahoo.co.jp</li>
+</ul>
+Gmailなどのフリーメールを送信元に設定すると、メールが届かない原因になります。
+
+<strong>理由：</strong>サーバーからGmailアドレスを名乗ってメールを送信すると、受信側のメールサーバーが「なりすまし（spoofing）」と判断します。
+<ul>
+ 	<li><strong>SPF認証失敗</strong>：GmailのSPFレコードがあなたのサーバーを許可していない</li>
+ 	<li><strong>DKIM認証失敗</strong>：Gmailの署名キーで署名されていない</li>
+ 	<li><strong>DMARC</strong>：Gmailの厳格なポリシーにより拒否/スパム扱い</li>
+</ul>
+返信先メールアドレス（Reply-To）は配信に影響しないため、Gmailなどを設定しても問題ありません。
+<h3>メールテンプレート</h3>
+テンプレートは管理画面から動的に追加・削除でき、最大10個まで設定可能です。各テンプレートには以下を設定します。
+<table>
+<tbody>
+<tr>
+<th>設定項目</th>
+<th>説明</th>
+</tr>
+<tr>
+<td>ラベル</td>
+<td>テンプレートの識別名（例：No.1, No.2）</td>
+</tr>
+<tr>
+<td>言語（Locale）</td>
+<td>JA / EN を選択。Payment Link IDにマッチしない場合のフォールバック判定に使用</td>
+</tr>
+<tr>
+<td>Payment Link ID</td>
+<td>このテンプレートに紐付ける<code>plink_...</code>を入力</td>
+</tr>
+<tr>
+<td>件名</td>
+<td>メールの件名</td>
+</tr>
+<tr>
+<td>本文</td>
+<td>メールの本文</td>
+</tr>
+</tbody>
+</table>
+件名と本文では、以下のプレースホルダーが使用できます。
+<ul>
+ 	<li><code>{brand}</code> - ブランド名（設定で指定）</li>
+ 	<li><code>{session_id}</code> - Checkout Session ID（照合用）</li>
+ 	<li><code>{email}</code> - 顧客のメールアドレス</li>
+</ul>
+<h2>STRIPE SETUP</h2>
+<h3>Webhookエンドポイントの登録</h3>
+<ol>
+ 	<li>Stripeダッシュボードにログイン</li>
+ 	<li><strong>Developers → Webhooks</strong>を開く</li>
+ 	<li><strong>Add endpoint</strong>をクリック</li>
+ 	<li>Endpoint URLにプラグイン設定画面のURLを貼り付け
+<code>https://あなたのドメイン/wp-json/thanks-mail/v1/webhook</code></li>
+ 	<li>以下のイベントを選択：
+<ul>
+ 	<li><code>checkout.session.completed</code></li>
+ 	<li><code>checkout.session.async_payment_succeeded</code></li>
+</ul>
+</li>
+ 	<li><strong>Add endpoint</strong>で保存</li>
+ 	<li>Signing secret（<code>whsec_...</code>）をコピーしてプラグインに設定</li>
+</ol>
+<h3>Payment Link IDの確認方法</h3>
+StripeダッシュボードでPayment Linkの詳細を開くと、URLに<code>plink_...</code>というIDが含まれています。
+<ul>
+ 	<li>テスト：<code>https://dashboard.stripe.com/test/payment-links/plink_XXXXXXXX</code></li>
+ 	<li>本番：<code>https://dashboard.stripe.com/payment-links/plink_XXXXXXXX</code></li>
+</ul>
+この<code>plink_XXXXXXXX</code>がプラグインに入力するIDです。
+<h2>TROUBLESHOOTING</h2>
+<h3>Webhookが403エラーになる</h3>
+セキュリティプラグインやサーバーのWAFがWebhookリクエストをブロックしている可能性があります。
+
+<strong>Wordfenceの場合：</strong>
+<ol>
+ 	<li>Firewall → All Firewall Options → Allowlisted URLsを開く</li>
+ 	<li>Webhook URLのパス（<code>/wp-json/thanks-mail/v1/webhook</code>）を追加</li>
+</ol>
+<strong>エックスサーバーの場合：</strong>
+<ol>
+ 	<li>サーバーパネル → WordPressセキュリティ設定を開く</li>
+ 	<li>「REST API アクセス制限」をOFFにする</li>
+</ol>
+この設定は海外IPからのREST APIアクセスを制限するもので、Stripeからのリクエストもブロックされてしまいます。
+<h3>Webhookは200なのにメールが届かない</h3>
+Stripeダッシュボードで<code>{"sent": true}</code>と表示されているのにメールが届かない場合、以下を確認してください。
+
+<strong>1. 送信元メールアドレスを確認</strong>
+
+送信元メールアドレスにGmailなどのフリーメールを設定していませんか？<strong>必ず自分のドメインのメールアドレス</strong>（例：info@yoursite.com）を設定してください。詳しくは上記「送信元メールアドレスの重要な注意」を参照してください。
+
+<strong>2. 二重送信防止機能</strong>
+
+「最近の送信履歴」を確認してください。同じSession IDがすでに記録されている場合、二重送信防止機能が働いています。これは正常な動作です。
+
+<strong>3. SMTPプラグインの導入</strong>
+
+上記を確認しても届かない場合は、SMTPプラグイン（WP Mail SMTPなど）を導入して、メール送信の信頼性を向上させてください。
+<h3>テスト環境と本番環境の切り替え</h3>
+Stripeのテストモードと本番モードでは、以下の値がすべて異なります。
+<ul>
+ 	<li>Webhook署名シークレット（<code>whsec_...</code>）</li>
+ 	<li>Payment Link ID（<code>plink_...</code>）</li>
+</ul>
+本番環境に切り替える際は、必ずこれらの値をLive用のものに更新してください。また、StripeダッシュボードのWebhook設定も、テスト用とLive用で別々に登録が必要です。
+<h2>FILTERS</h2>
+プラグインの動作をカスタマイズするためのフィルターフックが用意されています。
+<h3>メールヘッダーのカスタマイズ</h3>
+CCやBCCを追加する例：
+<pre><code>add_filter( 'tmfs_email_headers', function( $headers, $to, $lang, $session_id ) {
+    $headers[] = 'Cc: sales@example.com';
+    return $headers;
+}, 10, 4 );</code></pre>
+<h3>テンプレート判定のカスタマイズ</h3>
+メールアドレスのドメインでテンプレートを切り替える例（戻り値はテンプレートインデックス）：
+<pre><code>add_filter( 'tmfs_detect_language', function( $lang, $session ) {
+    $email = $session['customer_details']['email'] ?? '';
+    if ( strpos( $email, '.jp' ) !== false ) {
+        return '0'; // 最初のテンプレートを使用
+    }
+    return '1'; // 2番目のテンプレートを使用
+}, 10, 2 );</code></pre>
+<h3>利用可能なフィルター一覧</h3>
+<ul>
+ 	<li><code>tmfs_email_headers</code> - メールヘッダーの変更</li>
+ 	<li><code>tmfs_email_subject</code> - 件名の変更</li>
+ 	<li><code>tmfs_email_body</code> - 本文の変更</li>
+ 	<li><code>tmfs_detect_language</code> - テンプレート判定ロジックの変更（戻り値はテンプレートインデックス）</li>
+</ul>
+<h2>DATABASE</h2>
+プラグインは<code>wp_tmfs_sent_emails</code>テーブルを作成し、送信履歴を保存します。
+<table>
+<tbody>
+<tr>
+<th>カラム</th>
+<th>型</th>
+<th>説明</th>
+</tr>
+<tr>
+<td>id</td>
+<td>BIGINT</td>
+<td>自動採番ID</td>
+</tr>
+<tr>
+<td>session_id</td>
+<td>VARCHAR(255)</td>
+<td>Checkout Session ID（ユニーク）</td>
+</tr>
+<tr>
+<td>email</td>
+<td>VARCHAR(255)</td>
+<td>顧客メールアドレス</td>
+</tr>
+<tr>
+<td>lang</td>
+<td>VARCHAR(8)</td>
+<td>テンプレートインデックス</td>
+</tr>
+<tr>
+<td>product_name</td>
+<td>VARCHAR(255)</td>
+<td>商品名</td>
+</tr>
+<tr>
+<td>amount</td>
+<td>VARCHAR(50)</td>
+<td>金額</td>
+</tr>
+<tr>
+<td>sent_at</td>
+<td>DATETIME</td>
+<td>送信日時</td>
+</tr>
+</tbody>
+</table>
+プラグインをアンインストールすると、このテーブルと設定データは自動的に削除されます。
+<h2>CHANGELOG</h2>
+
+<h3>1.1.0</h3>
+<ul>
+ 	<li>新機能: メールテンプレートを1〜10個まで動的に追加・削除可能に</li>
+ 	<li>新機能: 各テンプレートにラベル、言語（locale）、Payment Link ID を個別設定</li>
+ 	<li>新機能: テンプレートごとの初期化ボタンでデフォルト値に復元可能</li>
+ 	<li>新機能: Payment Link ID またはlocaleによるテンプレート自動マッチング</li>
+ 	<li>改善: 旧バージョン（v1.0.x）の設定データを自動マイグレーション</li>
+ 	<li>変更: <code>tmfs_detect_language</code> フィルターの戻り値が言語コード（ja/en）からテンプレートインデックスに変更</li>
+</ul>
+
+<h3>1.0.4</h3>
+<ul>
+ 	<li>修正: 内部プレフィックスを stm_ から tmfs_ に全面変更（オプション名、テーブル名、設定グループ、transient キー、JS グローバル変数）— WordPress.org の4文字以上プレフィックス要件に準拠</li>
+ 	<li>修正: Plugin URI を復元（紹介ページ公開済み）</li>
+</ul>
+
+<h3>1.0.3</h3>
+<ul>
+ 	<li>修正: メインクラスを TMFS_Thanks_Mail にリネーム（WordPress.org 命名規則準拠）</li>
+ 	<li>修正: 全フィルターフック名を stm_ から tmfs_ プレフィックスに変更</li>
+ 	<li>修正: アンインストール関数を tmfs_uninstall_cleanup にリネーム</li>
+ 	<li>修正: テンプレート内グローバル変数にプレフィックス追加</li>
+ 	<li>修正: カスタムテーブルクエリに phpcs:ignore を追加</li>
+ 	<li>削除: load_plugin_textdomain() 呼び出し（WordPress 4.6 以降不要）</li>
+</ul>
+
+<h3>1.0.2</h3>
+<ul>
+ 	<li>修正: 外部リソース読み込み（BuyMeACoffee CDN 画像）を削除し、テキストリンクに変更</li>
+ 	<li>修正: インライン JavaScript を外部ファイル（assets/js/admin.js）に分離し、wp_enqueue_script() で読み込み</li>
+ 	<li>修正: グローバル定数のプレフィックスを STM_ から TMFS_ に変更</li>
+ 	<li>修正: 全プラグイン定数に define() コンフリクト対策を追加</li>
+ 	<li>改善: $_SERVER['REMOTE_ADDR'] の取得方法を wp_unslash() + filter_var() に改善</li>
+ 	<li>改善: error_log() を WP_DEBUG チェックでラップ</li>
+ 	<li>追加: /test REST API エンドポイントにスキーマ定義とバリデーションを追加</li>
+</ul>
+
+<h3>1.0.1</h3>
+<ul>
+ 	<li>修正: メール送信失敗時に送信済みとして DB に記録されてしまう不具合を修正</li>
+ 	<li>追加: メールアドレスのバリデーション（WordPress の is_email() を使用）</li>
+ 	<li>追加: Webhook エンドポイントのレート制限（IP あたり 60 秒間に 10 リクエストまで）</li>
+ 	<li>改善: readme.txt のデータ・プライバシーセクションをより明確に</li>
+</ul>
+
+<h3>1.0.0</h3>
+<ul>
+ 	<li>初回リリース</li>
+ 	<li>Webhook経由の自動サンクスメール送信</li>
+ 	<li>日本語・英語テンプレート対応</li>
+ 	<li>Payment Link IDによる言語自動判定</li>
+ 	<li>送信元メールアドレス・送信者名のカスタマイズ</li>
+ 	<li>二重送信防止機能</li>
+ 	<li>テストメール機能</li>
+ 	<li>送信履歴ログ</li>
+ 	<li>Webhook署名検証</li>
+ 	<li>日本語翻訳同梱</li>
+</ul>
