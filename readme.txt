@@ -16,6 +16,8 @@ Automatically send thank-you emails when Stripe Payment Links purchases are comp
 
 Thanks Mail for Stripe is a lightweight plugin that automatically sends customized thank-you emails to customers after they complete a purchase through Stripe Payment Links. Perfect for digital product sales, software licensing, and service businesses.
 
+👉 **Setup guide & developer's notes:** [Why I built this and how to set up Stripe webhooks](https://raplsworks.com/thanks-mail-for-stripe/)
+
 = No external services required - works directly with Stripe Webhooks =
 
 This plugin receives Stripe webhook events directly and sends emails using WordPress's built-in mail function. No Zapier, Make, or other third-party automation services needed.
@@ -85,6 +87,14 @@ This plugin receives Stripe webhook events directly and sends emails using WordP
 
 == Frequently Asked Questions ==
 
+= Where can I find detailed documentation? =
+
+A full walkthrough with Stripe webhook setup, template design tips, multi-language examples, and common pitfalls when shipping license keys automatically:
+
+* [Thanks Mail for Stripe — Developer's Guide & Setup Walkthrough](https://raplsworks.com/thanks-mail-for-stripe/)
+* [Source code on GitHub](https://github.com/rapls/thanks-mail-for-stripe)
+* [Developer's blog — Rapls Works](https://raplsworks.com/)
+
 = Why am I getting 403 errors on the webhook? =
 
 This is usually caused by security plugins or server WAF settings blocking the webhook requests. Common solutions:
@@ -93,6 +103,8 @@ This is usually caused by security plugins or server WAF settings blocking the w
 * **Xserver WAF**: Disable "REST API Access Restriction" in server panel (this blocks overseas IPs including Stripe)
 * **Cloudflare**: Create a firewall rule to allow Stripe IPs
 * **Other security plugins**: Whitelist the webhook endpoint URL
+
+For a detailed case study on troubleshooting Xserver WAF and webhook 501 errors, see the [setup guide](https://raplsworks.com/thanks-mail-for-stripe/).
 
 = Why is the email not being sent even though webhook returns 200? =
 
