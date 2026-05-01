@@ -5,7 +5,7 @@ Donate link: https://buymeacoffee.com/rapls
 Tags: stripe, payment, email, webhook, notifications
 Requires at least: 5.0
 Tested up to: 6.9
-Stable tag: 1.1.0
+Stable tag: 1.1.1
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -298,6 +298,9 @@ Additionally, plugin settings (webhook secret, email templates, Payment Link IDs
 * Data can be exported or deleted upon customer request via direct database access
 
 == Changelog ==
+
+= 1.1.1 =
+* Updated Plugin URI to new plugin page (https://raplsworks.com/plugins/thanks-mail-for-stripe/)
 
 = 1.1.0 =
 * New: Dynamic email templates - configure 1 to 10 templates with add/remove buttons

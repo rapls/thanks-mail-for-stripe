@@ -13,9 +13,9 @@
  *
  * @wordpress-plugin
  * Plugin Name:       Thanks Mail for Stripe
- * Plugin URI:        https://raplsworks.com/thanks-mail-for-stripe/
+ * Plugin URI:        https://raplsworks.com/plugins/thanks-mail-for-stripe/
  * Description:       Automatically send thank-you emails when Stripe Payment Links purchases are completed. Supports Japanese and English with customizable templates.
- * Version:           1.1.0
+ * Version:           1.1.1
  * Requires at least: 5.0
  * Requires PHP:      7.4
  * Author:            Rapls Works
@@ -35,7 +35,7 @@ defined('ABSPATH') || exit;
  * @var string
  */
 if ( ! defined( 'TMFS_VERSION' ) ) {
-    define( 'TMFS_VERSION', '1.1.0' );
+    define( 'TMFS_VERSION', '1.1.1' );
 }
 
 /**
