@@ -4,8 +4,8 @@ Contributors: rapls
 Donate link: https://buymeacoffee.com/rapls
 Tags: stripe, payment, email, webhook, notifications
 Requires at least: 5.0
-Tested up to: 6.9
-Stable tag: 1.1.1
+Tested up to: 7.0
+Stable tag: 1.1.2
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -299,6 +299,11 @@ Additionally, plugin settings (webhook secret, email templates, Payment Link IDs
 
 == Changelog ==
 
+= 1.1.2 =
+* Tested and verified compatible with WordPress 7.0 (verified on WordPress 7.0 RC with PHP 8.3)
+* Updated "Tested up to" to WordPress 7.0
+* No functional code changes
+
 = 1.1.1 =
 * Updated Plugin URI to new plugin page (https://raplsworks.com/plugins/thanks-mail-for-stripe/)
 
@@ -353,6 +358,9 @@ Additionally, plugin settings (webhook secret, email templates, Payment Link IDs
 * Japanese translation included
 
 == Upgrade Notice ==
+
+= 1.1.2 =
+Confirmed compatible with WordPress 7.0. No functional changes; safe maintenance update.
 
 = 1.1.0 =
 Dynamic templates: configure 1-10 email templates with per-template Payment Link ID and locale settings. Existing settings are automatically migrated.
