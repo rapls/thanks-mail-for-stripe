@@ -147,6 +147,9 @@ final class TMFS_Thanks_Mail
         register_activation_hook(__FILE__, [$this, 'activate']);
         register_deactivation_hook(__FILE__, [$this, 'deactivate']);
 
+        // Translations
+        add_action('init', [$this, 'load_translations']);
+
         // Admin
         if (is_admin()) {
             add_action('admin_menu', [$this, 'add_admin_menu']);
@@ -158,6 +161,29 @@ final class TMFS_Thanks_Mail
         // REST API
         add_action('rest_api_init', [$this, 'register_rest_routes']);
 
+    }
+
+    /**
+     * Load the plugin's bundled translations.
+     *
+     * Loaded explicitly via load_textdomain() (not load_plugin_textdomain())
+     * so the bundled .mo takes priority over any older WordPress.org language
+     * pack in wp-content/languages/plugins/. load_plugin_textdomain() prefers
+     * that global pack and would return before reaching the bundled file, which
+     * leaves strings newer than the published pack untranslated. Hooked on
+     * 'init' to satisfy WordPress 6.7+ just-in-time loading expectations.
+     */
+    public function load_translations(): void
+    {
+        $locale = determine_locale();
+
+        /** This filter is documented in wp-includes/l10n.php */
+        $locale = apply_filters('plugin_locale', $locale, 'thanks-mail-for-stripe');
+
+        $mofile = TMFS_PLUGIN_DIR . 'languages/thanks-mail-for-stripe-' . $locale . '.mo';
+        if (is_readable($mofile)) {
+            load_textdomain('thanks-mail-for-stripe', $mofile, $locale);
+        }
     }
 
     /**
