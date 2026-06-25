@@ -4,6 +4,9 @@
  */
 
 defined('ABSPATH') || exit;
+
+$tmfs_option = TMFS_Thanks_Mail::OPTION_NAME;
+$tmfs_categories = $settings['categories'] ?? [];
 ?>
 <div class="wrap stm-admin">
     <h1><?php esc_html_e('Thanks Mail for Stripe Settings', 'thanks-mail-for-stripe'); ?></h1>
@@ -149,10 +152,69 @@ defined('ABSPATH') || exit;
             </table>
         </div>
 
+        <!-- Categories -->
+        <div class="stm-card tmfs-categories-card">
+            <h2><?php esc_html_e('Categories', 'thanks-mail-for-stripe'); ?></h2>
+            <p class="description" style="margin-bottom: 12px;">
+                <?php esc_html_e('Define your categories here, then assign each template to one of them below.', 'thanks-mail-for-stripe'); ?>
+            </p>
+            <div id="tmfs-categories-list">
+                <?php foreach ($tmfs_categories as $tmfs_cidx => $tmfs_cat) : ?>
+                    <?php
+                    $tmfs_cat_id   = is_array($tmfs_cat) ? ($tmfs_cat['id'] ?? '') : '';
+                    $tmfs_cat_name = is_array($tmfs_cat) ? ($tmfs_cat['name'] ?? '') : (string) $tmfs_cat;
+                    if ($tmfs_cat_id === '' || $tmfs_cat_name === '') {
+                        continue;
+                    }
+                    ?>
+                    <div class="tmfs-category-row">
+                        <input type="hidden"
+                               name="<?php echo esc_attr($tmfs_option); ?>[categories][<?php echo esc_attr($tmfs_cidx); ?>][id]"
+                               value="<?php echo esc_attr($tmfs_cat_id); ?>" class="tmfs-category-id">
+                        <input type="text"
+                               name="<?php echo esc_attr($tmfs_option); ?>[categories][<?php echo esc_attr($tmfs_cidx); ?>][name]"
+                               value="<?php echo esc_attr($tmfs_cat_name); ?>"
+                               class="tmfs-category-name regular-text"
+                               placeholder="<?php esc_attr_e('Category name', 'thanks-mail-for-stripe'); ?>">
+                        <button type="button" class="button button-small tmfs-remove-category" title="<?php esc_attr_e('Remove category', 'thanks-mail-for-stripe'); ?>" aria-label="<?php esc_attr_e('Remove category', 'thanks-mail-for-stripe'); ?>">&times;</button>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+            <p style="margin-bottom: 0;">
+                <button type="button" id="tmfs-add-category" class="button button-secondary">
+                    + <?php esc_html_e('Add Category', 'thanks-mail-for-stripe'); ?>
+                </button>
+            </p>
+            <script type="text/template" id="tmfs-category-row-tmpl">
+                <div class="tmfs-category-row">
+                    <input type="hidden"
+                           name="<?php echo esc_attr($tmfs_option); ?>[categories][__CATIDX__][id]"
+                           value="__CATID__" class="tmfs-category-id">
+                    <input type="text"
+                           name="<?php echo esc_attr($tmfs_option); ?>[categories][__CATIDX__][name]"
+                           value="" class="tmfs-category-name regular-text"
+                           placeholder="<?php esc_attr_e('Category name', 'thanks-mail-for-stripe'); ?>">
+                    <button type="button" class="button button-small tmfs-remove-category" title="<?php esc_attr_e('Remove category', 'thanks-mail-for-stripe'); ?>" aria-label="<?php esc_attr_e('Remove category', 'thanks-mail-for-stripe'); ?>">&times;</button>
+                </div>
+            </script>
+        </div>
+
         <!-- Email Templates (Dynamic) -->
-        <div class="stm-card">
-            <h2><?php esc_html_e('Email Templates', 'thanks-mail-for-stripe'); ?></h2>
-            <p class="description">
+        <div class="stm-card tmfs-templates-toolbar-card">
+            <div class="tmfs-templates-toolbar">
+                <h2 class="tmfs-templates-title"><?php esc_html_e('Email Templates', 'thanks-mail-for-stripe'); ?></h2>
+                <input type="search" id="tmfs-template-search" class="tmfs-template-search"
+                       placeholder="<?php esc_attr_e('Search by name, category, locale, Payment Link, subject…', 'thanks-mail-for-stripe'); ?>">
+                <select id="tmfs-category-filter" class="tmfs-category-filter">
+                    <option value=""><?php esc_html_e('All categories', 'thanks-mail-for-stripe'); ?></option>
+                </select>
+                <span id="tmfs-templates-count" class="tmfs-templates-count"></span>
+                <span class="tmfs-templates-toolbar-actions">
+                    <button type="button" class="button button-small" id="tmfs-expand-all"><?php esc_html_e('Expand all', 'thanks-mail-for-stripe'); ?></button>
+                    <button type="button" class="button button-small" id="tmfs-collapse-all"><?php esc_html_e('Collapse all', 'thanks-mail-for-stripe'); ?></button>
+                </span>
+            </div>
+            <p class="description" style="margin: 10px 0 0;">
                 <?php
                 printf(
                     /* translators: %d: maximum number of templates */
@@ -165,18 +227,38 @@ defined('ABSPATH') || exit;
 
         <div id="tmfs-templates-container">
             <?php foreach ($tmfs_templates as $tmfs_index => $tmfs_tmpl) : ?>
-            <div class="stm-card stm-template-card" data-index="<?php echo esc_attr($tmfs_index); ?>">
+            <?php
+            $tmfs_cat_val = intval($tmfs_tmpl['category'] ?? 0);
+            $tmfs_cat_val = $tmfs_cat_val > 0 ? (string) $tmfs_cat_val : '';
+            ?>
+            <div class="stm-card stm-template-card stm-collapsed" data-index="<?php echo esc_attr($tmfs_index); ?>">
                 <div class="stm-template-header">
-                    <input type="text" class="tmfs-template-label"
-                           name="<?php echo esc_attr(TMFS_Thanks_Mail::OPTION_NAME); ?>[templates][<?php echo esc_attr($tmfs_index); ?>][label]"
-                           value="<?php echo esc_attr($tmfs_tmpl['label']); ?>"
-                           placeholder="<?php esc_attr_e('Template name', 'thanks-mail-for-stripe'); ?>">
-                    <select name="<?php echo esc_attr(TMFS_Thanks_Mail::OPTION_NAME); ?>[templates][<?php echo esc_attr($tmfs_index); ?>][locale]">
-                        <option value="" <?php selected($tmfs_tmpl['locale'], ''); ?>><?php esc_html_e('— Locale —', 'thanks-mail-for-stripe'); ?></option>
-                        <option value="ja" <?php selected($tmfs_tmpl['locale'], 'ja'); ?>>JA</option>
-                        <option value="en" <?php selected($tmfs_tmpl['locale'], 'en'); ?>>EN</option>
-                    </select>
-                    <button type="button" class="button button-small tmfs-delete-template" title="<?php esc_attr_e('Delete', 'thanks-mail-for-stripe'); ?>">&times;</button>
+                    <button type="button" class="tmfs-template-toggle" title="<?php esc_attr_e('Expand / collapse', 'thanks-mail-for-stripe'); ?>" aria-label="<?php esc_attr_e('Expand / collapse', 'thanks-mail-for-stripe'); ?>"></button>
+                    <span class="tmfs-template-num"></span>
+                    <div class="stm-template-header-fields">
+                        <input type="text" class="tmfs-template-label"
+                               name="<?php echo esc_attr($tmfs_option); ?>[templates][<?php echo esc_attr($tmfs_index); ?>][label]"
+                               value="<?php echo esc_attr($tmfs_tmpl['label']); ?>"
+                               placeholder="<?php esc_attr_e('Template name', 'thanks-mail-for-stripe'); ?>">
+                        <select name="<?php echo esc_attr($tmfs_option); ?>[templates][<?php echo esc_attr($tmfs_index); ?>][category]" class="tmfs-template-category">
+                            <option value="" <?php selected($tmfs_cat_val, ''); ?>><?php esc_html_e('— No category —', 'thanks-mail-for-stripe'); ?></option>
+                            <?php foreach ($tmfs_categories as $tmfs_cat_opt) : ?>
+                                <?php if (!is_array($tmfs_cat_opt) || empty($tmfs_cat_opt['id'])) { continue; } ?>
+                                <option value="<?php echo esc_attr($tmfs_cat_opt['id']); ?>" <?php selected($tmfs_cat_val, (string) $tmfs_cat_opt['id']); ?>><?php echo esc_html($tmfs_cat_opt['name'] ?? ''); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <select name="<?php echo esc_attr($tmfs_option); ?>[templates][<?php echo esc_attr($tmfs_index); ?>][locale]" class="tmfs-template-locale">
+                            <option value="" <?php selected($tmfs_tmpl['locale'], ''); ?>><?php esc_html_e('— Locale —', 'thanks-mail-for-stripe'); ?></option>
+                            <option value="ja" <?php selected($tmfs_tmpl['locale'], 'ja'); ?>>JA</option>
+                            <option value="en" <?php selected($tmfs_tmpl['locale'], 'en'); ?>>EN</option>
+                        </select>
+                    </div>
+                    <span class="tmfs-template-actions">
+                        <button type="button" class="button button-small tmfs-move-up" title="<?php esc_attr_e('Move up', 'thanks-mail-for-stripe'); ?>" aria-label="<?php esc_attr_e('Move up', 'thanks-mail-for-stripe'); ?>">&uarr;</button>
+                        <button type="button" class="button button-small tmfs-move-down" title="<?php esc_attr_e('Move down', 'thanks-mail-for-stripe'); ?>" aria-label="<?php esc_attr_e('Move down', 'thanks-mail-for-stripe'); ?>">&darr;</button>
+                        <button type="button" class="button button-small tmfs-copy-template" title="<?php esc_attr_e('Duplicate template', 'thanks-mail-for-stripe'); ?>"><?php esc_html_e('Copy', 'thanks-mail-for-stripe'); ?></button>
+                        <button type="button" class="button button-small tmfs-delete-template" title="<?php esc_attr_e('Delete', 'thanks-mail-for-stripe'); ?>">&times;</button>
+                    </span>
                 </div>
                 <table class="form-table">
                     <tr>
@@ -185,7 +267,7 @@ defined('ABSPATH') || exit;
                         </th>
                         <td>
                             <input type="text"
-                                   name="<?php echo esc_attr(TMFS_Thanks_Mail::OPTION_NAME); ?>[templates][<?php echo esc_attr($tmfs_index); ?>][payment_link]"
+                                   name="<?php echo esc_attr($tmfs_option); ?>[templates][<?php echo esc_attr($tmfs_index); ?>][payment_link]"
                                    value="<?php echo esc_attr($tmfs_tmpl['payment_link']); ?>"
                                    class="regular-text" placeholder="plink_...">
                             <p class="description">
@@ -199,7 +281,7 @@ defined('ABSPATH') || exit;
                         </th>
                         <td>
                             <input type="text"
-                                   name="<?php echo esc_attr(TMFS_Thanks_Mail::OPTION_NAME); ?>[templates][<?php echo esc_attr($tmfs_index); ?>][subject]"
+                                   name="<?php echo esc_attr($tmfs_option); ?>[templates][<?php echo esc_attr($tmfs_index); ?>][subject]"
                                    value="<?php echo esc_attr($tmfs_tmpl['subject']); ?>"
                                    class="large-text">
                         </td>
@@ -209,7 +291,7 @@ defined('ABSPATH') || exit;
                             <label><?php esc_html_e('Body', 'thanks-mail-for-stripe'); ?></label>
                         </th>
                         <td>
-                            <textarea name="<?php echo esc_attr(TMFS_Thanks_Mail::OPTION_NAME); ?>[templates][<?php echo esc_attr($tmfs_index); ?>][body]"
+                            <textarea name="<?php echo esc_attr($tmfs_option); ?>[templates][<?php echo esc_attr($tmfs_index); ?>][body]"
                                       rows="12" class="large-text code tmfs-field-body"><?php echo esc_textarea($tmfs_tmpl['body']); ?></textarea>
                         </td>
                     </tr>
@@ -223,26 +305,47 @@ defined('ABSPATH') || exit;
             <?php endforeach; ?>
         </div>
 
+        <!-- Pagination -->
+        <div id="tmfs-templates-pagination" class="tmfs-pagination"></div>
+
         <p>
             <button type="button" id="tmfs-add-template" class="button button-secondary">
                 + <?php esc_html_e('Add Template', 'thanks-mail-for-stripe'); ?>
             </button>
+            <span class="description" style="margin-left: 10px;">
+                <?php
+                /* translators: %d: maximum number of templates */
+                printf(esc_html__('Max %d templates', 'thanks-mail-for-stripe'), esc_html(TMFS_Thanks_Mail::MAX_TEMPLATES));
+                ?>
+            </span>
         </p>
 
         <!-- Hidden template for JS cloning -->
         <script type="text/template" id="tmfs-template-tmpl">
             <div class="stm-card stm-template-card" data-index="__INDEX__">
                 <div class="stm-template-header">
-                    <input type="text" class="tmfs-template-label"
-                           name="<?php echo esc_attr(TMFS_Thanks_Mail::OPTION_NAME); ?>[templates][__INDEX__][label]"
-                           value=""
-                           placeholder="<?php esc_attr_e('Template name', 'thanks-mail-for-stripe'); ?>">
-                    <select name="<?php echo esc_attr(TMFS_Thanks_Mail::OPTION_NAME); ?>[templates][__INDEX__][locale]">
-                        <option value=""><?php esc_html_e('— Locale —', 'thanks-mail-for-stripe'); ?></option>
-                        <option value="ja">JA</option>
-                        <option value="en">EN</option>
-                    </select>
-                    <button type="button" class="button button-small tmfs-delete-template" title="<?php esc_attr_e('Delete', 'thanks-mail-for-stripe'); ?>">&times;</button>
+                    <button type="button" class="tmfs-template-toggle" title="<?php esc_attr_e('Expand / collapse', 'thanks-mail-for-stripe'); ?>" aria-label="<?php esc_attr_e('Expand / collapse', 'thanks-mail-for-stripe'); ?>"></button>
+                    <span class="tmfs-template-num"></span>
+                    <div class="stm-template-header-fields">
+                        <input type="text" class="tmfs-template-label"
+                               name="<?php echo esc_attr($tmfs_option); ?>[templates][__INDEX__][label]"
+                               value=""
+                               placeholder="<?php esc_attr_e('Template name', 'thanks-mail-for-stripe'); ?>">
+                        <select name="<?php echo esc_attr($tmfs_option); ?>[templates][__INDEX__][category]" class="tmfs-template-category">
+                            <option value=""><?php esc_html_e('— No category —', 'thanks-mail-for-stripe'); ?></option>
+                        </select>
+                        <select name="<?php echo esc_attr($tmfs_option); ?>[templates][__INDEX__][locale]" class="tmfs-template-locale">
+                            <option value=""><?php esc_html_e('— Locale —', 'thanks-mail-for-stripe'); ?></option>
+                            <option value="ja">JA</option>
+                            <option value="en">EN</option>
+                        </select>
+                    </div>
+                    <span class="tmfs-template-actions">
+                        <button type="button" class="button button-small tmfs-move-up" title="<?php esc_attr_e('Move up', 'thanks-mail-for-stripe'); ?>" aria-label="<?php esc_attr_e('Move up', 'thanks-mail-for-stripe'); ?>">&uarr;</button>
+                        <button type="button" class="button button-small tmfs-move-down" title="<?php esc_attr_e('Move down', 'thanks-mail-for-stripe'); ?>" aria-label="<?php esc_attr_e('Move down', 'thanks-mail-for-stripe'); ?>">&darr;</button>
+                        <button type="button" class="button button-small tmfs-copy-template" title="<?php esc_attr_e('Duplicate template', 'thanks-mail-for-stripe'); ?>"><?php esc_html_e('Copy', 'thanks-mail-for-stripe'); ?></button>
+                        <button type="button" class="button button-small tmfs-delete-template" title="<?php esc_attr_e('Delete', 'thanks-mail-for-stripe'); ?>">&times;</button>
+                    </span>
                 </div>
                 <table class="form-table">
                     <tr>
@@ -251,7 +354,7 @@ defined('ABSPATH') || exit;
                         </th>
                         <td>
                             <input type="text"
-                                   name="<?php echo esc_attr(TMFS_Thanks_Mail::OPTION_NAME); ?>[templates][__INDEX__][payment_link]"
+                                   name="<?php echo esc_attr($tmfs_option); ?>[templates][__INDEX__][payment_link]"
                                    value=""
                                    class="regular-text" placeholder="plink_...">
                             <p class="description">
@@ -265,7 +368,7 @@ defined('ABSPATH') || exit;
                         </th>
                         <td>
                             <input type="text"
-                                   name="<?php echo esc_attr(TMFS_Thanks_Mail::OPTION_NAME); ?>[templates][__INDEX__][subject]"
+                                   name="<?php echo esc_attr($tmfs_option); ?>[templates][__INDEX__][subject]"
                                    value=""
                                    class="large-text">
                         </td>
@@ -275,7 +378,7 @@ defined('ABSPATH') || exit;
                             <label><?php esc_html_e('Body', 'thanks-mail-for-stripe'); ?></label>
                         </th>
                         <td>
-                            <textarea name="<?php echo esc_attr(TMFS_Thanks_Mail::OPTION_NAME); ?>[templates][__INDEX__][body]"
+                            <textarea name="<?php echo esc_attr($tmfs_option); ?>[templates][__INDEX__][body]"
                                       rows="12" class="large-text code tmfs-field-body"></textarea>
                         </td>
                     </tr>

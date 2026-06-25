@@ -5,7 +5,7 @@ Donate link: https://buymeacoffee.com/rapls
 Tags: stripe, payment, email, webhook, notifications
 Requires at least: 5.0
 Tested up to: 7.0
-Stable tag: 1.1.2
+Stable tag: 1.2.0
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -299,6 +299,17 @@ Additionally, plugin settings (webhook secret, email templates, Payment Link IDs
 
 == Changelog ==
 
+= 1.2.0 =
+* New: Configure up to 100 email templates (raised from 10)
+* New: Template categories - define a managed category list and assign each template to one; renaming a category propagates to all templates that use it
+* New: Search templates by name, category, locale, Payment Link ID, subject, or body
+* New: Filter templates by category
+* New: Collapse / expand individual templates, plus expand-all / collapse-all controls
+* New: Pagination for large template lists (10 per page)
+* New: Reorder templates with move up / move down buttons
+* New: Duplicate (copy) a template with one click
+* Improved: Settings data migrated automatically (category IDs assigned on save)
+
 = 1.1.2 =
 * Tested and verified compatible with WordPress 7.0 (verified on WordPress 7.0 RC with PHP 8.3)
 * Updated "Tested up to" to WordPress 7.0
@@ -358,6 +369,9 @@ Additionally, plugin settings (webhook secret, email templates, Payment Link IDs
 * Japanese translation included
 
 == Upgrade Notice ==
+
+= 1.2.0 =
+Manage up to 100 templates with categories, search, filtering, pagination, reordering, and one-click duplication. Existing settings are migrated automatically.
 
 = 1.1.2 =
 Confirmed compatible with WordPress 7.0. No functional changes; safe maintenance update.

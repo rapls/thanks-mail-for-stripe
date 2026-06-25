@@ -373,3 +373,87 @@ msgstr "このプラグインを気に入っていただけましたか？%s い
 #: templates/admin-settings.php
 msgid "review on WordPress.org"
 msgstr "WordPress.org でのレビュー"
+
+#: templates/admin-settings.php
+msgid "Categories"
+msgstr "カテゴリ"
+
+#: templates/admin-settings.php
+msgid "Define your categories here, then assign each template to one of them below."
+msgstr "ここでカテゴリを定義し、下の各テンプレートに割り当ててください。"
+
+#: templates/admin-settings.php
+msgid "Category name"
+msgstr "カテゴリ名"
+
+#: templates/admin-settings.php
+msgid "Remove category"
+msgstr "カテゴリを削除"
+
+#: templates/admin-settings.php
+msgid "Add Category"
+msgstr "カテゴリを追加"
+
+#: templates/admin-settings.php
+msgid "Search by name, category, locale, Payment Link, subject…"
+msgstr "名前・カテゴリ・ロケール・Payment Link・件名で検索…"
+
+#: templates/admin-settings.php
+msgid "All categories"
+msgstr "すべてのカテゴリ"
+
+#: templates/admin-settings.php
+msgid "Expand all"
+msgstr "すべて展開"
+
+#: templates/admin-settings.php
+msgid "Collapse all"
+msgstr "すべて折りたたむ"
+
+#: templates/admin-settings.php
+msgid "Expand / collapse"
+msgstr "展開 / 折りたたみ"
+
+#: templates/admin-settings.php
+msgid "— No category —"
+msgstr "— カテゴリなし —"
+
+#: templates/admin-settings.php
+msgid "Move up"
+msgstr "上へ移動"
+
+#: templates/admin-settings.php
+msgid "Move down"
+msgstr "下へ移動"
+
+#: templates/admin-settings.php
+msgid "Duplicate template"
+msgstr "テンプレートを複製"
+
+#: templates/admin-settings.php
+msgid "Max %d templates"
+msgstr "最大 %d 件のテンプレート"
+
+#: thanks-mail-for-stripe.php
+msgid "Previous"
+msgstr "前へ"
+
+#: thanks-mail-for-stripe.php
+msgid "Next"
+msgstr "次へ"
+
+#: thanks-mail-for-stripe.php
+msgid "No templates match your search."
+msgstr "検索条件に一致するテンプレートがありません。"
+
+#: thanks-mail-for-stripe.php
+msgid "templates"
+msgstr "件"
+
+#: thanks-mail-for-stripe.php
+msgid "Uncategorized"
+msgstr "カテゴリなし"
+
+#: thanks-mail-for-stripe.php
+msgid " (copy)"
+msgstr "（コピー）"

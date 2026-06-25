@@ -15,7 +15,7 @@
  * Plugin Name:       Thanks Mail for Stripe
  * Plugin URI:        https://raplsworks.com/plugins/thanks-mail-for-stripe/
  * Description:       Automatically send thank-you emails when Stripe Payment Links purchases are completed. Supports Japanese and English with customizable templates.
- * Version:           1.1.2
+ * Version:           1.2.0
  * Requires at least: 5.0
  * Requires PHP:      7.4
  * Author:            Rapls Works
@@ -35,7 +35,7 @@ defined('ABSPATH') || exit;
  * @var string
  */
 if ( ! defined( 'TMFS_VERSION' ) ) {
-    define( 'TMFS_VERSION', '1.1.2' );
+    define( 'TMFS_VERSION', '1.2.0' );
 }
 
 /**
@@ -114,7 +114,7 @@ final class TMFS_Thanks_Mail
      * @since 1.1.0
      * @var int
      */
-    const MAX_TEMPLATES = 10;
+    const MAX_TEMPLATES = 100;
 
     /**
      * Get singleton instance.
@@ -217,6 +217,11 @@ final class TMFS_Thanks_Mail
             'from_name' => get_bloginfo('name'),
             'support_email' => get_option('admin_email'),
 
+            // Managed categories (array of ['id' => int, 'name' => string]) and
+            // the monotonic counter used to assign new category IDs.
+            'categories' => [],
+            'category_seq' => 1,
+
             // Templates
             'templates' => $this->get_default_templates(),
         ];
@@ -257,6 +262,7 @@ If you didn\'t make this purchase, please reply to this email.';
             return [
                 [
                     'label'        => 'No.1',
+                    'category'     => 0,
                     'locale'       => 'ja',
                     'payment_link' => '',
                     'subject'      => $subject_ja,
@@ -264,6 +270,7 @@ If you didn\'t make this purchase, please reply to this email.';
                 ],
                 [
                     'label'        => 'No.2',
+                    'category'     => 0,
                     'locale'       => 'en',
                     'payment_link' => '',
                     'subject'      => $subject_en,
@@ -275,6 +282,7 @@ If you didn\'t make this purchase, please reply to this email.';
         return [
             [
                 'label'        => 'No.1',
+                'category'     => 0,
                 'locale'       => 'en',
                 'payment_link' => '',
                 'subject'      => $subject_en,
@@ -282,6 +290,7 @@ If you didn\'t make this purchase, please reply to this email.';
             ],
             [
                 'label'        => 'No.2',
+                'category'     => 0,
                 'locale'       => 'ja',
                 'payment_link' => '',
                 'subject'      => $subject_ja,
@@ -297,6 +306,7 @@ If you didn\'t make this purchase, please reply to this email.';
     {
         return [
             'label'        => '',
+            'category'     => 0,
             'locale'       => '',
             'payment_link' => '',
             'subject'      => '',
@@ -360,6 +370,58 @@ If you didn\'t make this purchase, please reply to this email.';
             );
 
             update_option(self::OPTION_NAME, $settings);
+        }
+
+        // Migration: convert legacy string-list categories into {id, name}
+        // objects and remap template category names to the new IDs.
+        if (!empty($settings['categories']) && is_array($settings['categories'])) {
+            $needs_category_migration = false;
+            foreach ($settings['categories'] as $maybe) {
+                if (!is_array($maybe)) {
+                    $needs_category_migration = true;
+                    break;
+                }
+            }
+
+            if ($needs_category_migration) {
+                $seq = 1;
+                $name_to_id = [];
+                $new_categories = [];
+
+                foreach ($settings['categories'] as $maybe) {
+                    $name = is_array($maybe) ? ($maybe['name'] ?? '') : (string) $maybe;
+                    $name = trim($name);
+                    if ($name === '') {
+                        continue;
+                    }
+                    $key = function_exists('mb_strtolower') ? mb_strtolower($name) : strtolower($name);
+                    if (isset($name_to_id[$key])) {
+                        continue;
+                    }
+                    $id = $seq++;
+                    $name_to_id[$key] = $id;
+                    $new_categories[] = ['id' => $id, 'name' => $name];
+                }
+
+                $settings['categories']   = $new_categories;
+                $settings['category_seq'] = $seq;
+
+                // Remap each template's category (a name string) to its new ID.
+                if (!empty($settings['templates']) && is_array($settings['templates'])) {
+                    foreach ($settings['templates'] as &$tpl_ref) {
+                        $cv = isset($tpl_ref['category']) ? trim((string) $tpl_ref['category']) : '';
+                        if ($cv === '') {
+                            $tpl_ref['category'] = 0;
+                            continue;
+                        }
+                        $key = function_exists('mb_strtolower') ? mb_strtolower($cv) : strtolower($cv);
+                        $tpl_ref['category'] = $name_to_id[$key] ?? 0;
+                    }
+                    unset($tpl_ref);
+                }
+
+                update_option(self::OPTION_NAME, $settings);
+            }
         }
 
         // Apply defaults for flat settings only
@@ -431,6 +493,58 @@ If you didn\'t make this purchase, please reply to this email.';
         $sanitized['from_name'] = sanitize_text_field($input['from_name'] ?? '');
         $sanitized['support_email'] = sanitize_email($input['support_email'] ?? '');
 
+        // Managed categories: each row carries an ID (existing integer ID, or a
+        // temporary "new_*" token for rows added in the browser) and a name.
+        // We assign stable integer IDs and build a map from every submitted
+        // token to its final ID so templates can be remapped below.
+        $existing_settings = get_option(self::OPTION_NAME, []);
+        $next_category_id = isset($existing_settings['category_seq'])
+            ? max(1, intval($existing_settings['category_seq']))
+            : 1;
+
+        $sanitized['categories'] = [];
+        $category_id_map = [];   // submitted token (string) => final int ID
+        $used_category_ids = [];
+
+        if (!empty($input['categories']) && is_array($input['categories'])) {
+            $seen_categories = [];
+            foreach ($input['categories'] as $row) {
+                if (!is_array($row)) {
+                    continue;
+                }
+
+                $name = sanitize_text_field($row['name'] ?? '');
+                if ($name === '') {
+                    continue;
+                }
+                $key = function_exists('mb_strtolower') ? mb_strtolower($name) : strtolower($name);
+                if (isset($seen_categories[$key])) {
+                    continue;
+                }
+                $seen_categories[$key] = true;
+
+                $submitted_id = isset($row['id']) ? trim((string) $row['id']) : '';
+                if ($submitted_id !== '' && ctype_digit($submitted_id) && !isset($used_category_ids[(int) $submitted_id])) {
+                    $final_id = (int) $submitted_id;
+                } else {
+                    $final_id = $next_category_id++;
+                }
+                if ($final_id >= $next_category_id) {
+                    $next_category_id = $final_id + 1;
+                }
+
+                $used_category_ids[$final_id] = true;
+                if ($submitted_id !== '') {
+                    $category_id_map[$submitted_id] = $final_id;
+                }
+                $category_id_map[(string) $final_id] = $final_id;
+
+                $sanitized['categories'][] = ['id' => $final_id, 'name' => $name];
+            }
+        }
+
+        $sanitized['category_seq'] = $next_category_id;
+
         // Templates
         $sanitized['templates'] = [];
         $valid_locales = ['ja', 'en', ''];
@@ -456,8 +570,14 @@ If you didn\'t make this purchase, please reply to this email.';
                     $locale = '';
                 }
 
+                $raw_category = isset($tmpl['category']) ? trim((string) $tmpl['category']) : '';
+                $category = ($raw_category !== '' && isset($category_id_map[$raw_category]))
+                    ? (int) $category_id_map[$raw_category]
+                    : 0;
+
                 $sanitized['templates'][] = [
                     'label'        => $label,
+                    'category'     => $category,
                     'locale'       => $locale,
                     'payment_link' => $link,
                     'subject'      => $subject,
@@ -526,6 +646,14 @@ If you didn\'t make this purchase, please reply to this email.';
                 'templateLabel'        => __('Template', 'thanks-mail-for-stripe'),
                 'cannotDeleteAll'      => __('At least one template is required.', 'thanks-mail-for-stripe'),
                 'confirmResetTemplate' => __('Are you sure you want to reset this template to defaults?', 'thanks-mail-for-stripe'),
+                'prev'                 => __('Previous', 'thanks-mail-for-stripe'),
+                'next'                 => __('Next', 'thanks-mail-for-stripe'),
+                'noResults'            => __('No templates match your search.', 'thanks-mail-for-stripe'),
+                'templatesUnit'        => __('templates', 'thanks-mail-for-stripe'),
+                'allCategories'        => __('All categories', 'thanks-mail-for-stripe'),
+                'uncategorized'        => __('Uncategorized', 'thanks-mail-for-stripe'),
+                'noCategory'           => __('— No category —', 'thanks-mail-for-stripe'),
+                'copySuffix'           => __(' (copy)', 'thanks-mail-for-stripe'),
             ],
         ]);
     }
