@@ -148,7 +148,6 @@ final class TMFS_Thanks_Mail
         register_deactivation_hook(__FILE__, [$this, 'deactivate']);
 
         // Translations
-        add_action('init', [$this, 'load_translations']);
 
         // Admin
         if (is_admin()) {
@@ -163,28 +162,17 @@ final class TMFS_Thanks_Mail
 
     }
 
-    /**
-     * Load the plugin's bundled translations.
+    /*
+     * Nothing loads translations any more. The catalogue is not shipped:
+     * WordPress.org builds it from translate.wordpress.org and serves it into
+     * wp-content/languages/plugins/, which core's just-in-time loader reads
+     * without being asked.
      *
-     * Loaded explicitly via load_textdomain() (not load_plugin_textdomain())
-     * so the bundled .mo takes priority over any older WordPress.org language
-     * pack in wp-content/languages/plugins/. load_plugin_textdomain() prefers
-     * that global pack and would return before reaching the bundled file, which
-     * leaves strings newer than the published pack untranslated. Hooked on
-     * 'init' to satisfy WordPress 6.7+ just-in-time loading expectations.
+     * This method existed to make the bundled .mo win over an older published
+     * pack, so that strings added since that pack was built still resolved.
+     * With nothing bundled they read English until GlotPress catches up, and
+     * that was the trade made when the bundle was dropped.
      */
-    public function load_translations(): void
-    {
-        $locale = determine_locale();
-
-        /** This filter is documented in wp-includes/l10n.php */
-        $locale = apply_filters('plugin_locale', $locale, 'thanks-mail-for-stripe');
-
-        $mofile = TMFS_PLUGIN_DIR . 'languages/thanks-mail-for-stripe-' . $locale . '.mo';
-        if (is_readable($mofile)) {
-            load_textdomain('thanks-mail-for-stripe', $mofile, $locale);
-        }
-    }
 
     /**
      * Plugin activation
