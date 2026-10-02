@@ -8,10 +8,29 @@
 jQuery(document).ready(function($) {
     // Copy button
     $('.stm-copy-btn').on('click', function() {
-        var text = $(this).data('copy');
-        navigator.clipboard.writeText(text).then(function() {
-            alert(tmfsAdmin.i18n.copied);
-        });
+        var $btn = $(this);
+        var text = String($btn.data('copy'));
+        var original = $btn.text();
+        var done = function() {
+            $btn.text(tmfsAdmin.i18n.copied);
+            setTimeout(function() { $btn.text(original); }, 1500);
+        };
+
+        // navigator.clipboard only exists in secure contexts (HTTPS or
+        // localhost); plain-HTTP admin screens need the legacy path.
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(text).then(done);
+            return;
+        }
+        var $tmp = $('<textarea readonly>').val(text).css({ position: 'fixed', top: 0, left: 0, opacity: 0 });
+        $('body').append($tmp);
+        $tmp[0].select();
+        try {
+            if (document.execCommand('copy')) {
+                done();
+            }
+        } catch (e) {}
+        $tmp.remove();
     });
 
     // Toggle password visibility
@@ -20,6 +39,29 @@ jQuery(document).ready(function($) {
         var type = target.attr('type') === 'password' ? 'text' : 'password';
         target.attr('type', type);
         $(this).text(type === 'password' ? tmfsAdmin.i18n.show : tmfsAdmin.i18n.hide);
+    });
+
+    function setStatus($el, text, color) {
+        $el.empty().append($('<span>').css('color', color).text(text));
+    }
+
+    // Warn before leaving with unsaved edits. Up to 100 templates can be
+    // edited at once, and Reset reloads the page.
+    var isDirty = false;
+    $('.stm-admin form').on('input change', function(e) {
+        // Search and filter only change the view, not the settings.
+        if ($(e.target).is('#tmfs-template-search, #tmfs-category-filter')) {
+            return;
+        }
+        isDirty = true;
+    }).on('submit', function() {
+        isDirty = false;
+    });
+    $(window).on('beforeunload', function(e) {
+        if (isDirty) {
+            e.preventDefault();
+            return '';
+        }
     });
 
     // Reset settings
@@ -41,10 +83,11 @@ jQuery(document).ready(function($) {
             },
             success: function() {
                 alert(tmfsAdmin.i18n.resetDone);
+                isDirty = false;
                 location.reload();
             },
             error: function() {
-                $status.html('<span style="color: red;">' + tmfsAdmin.i18n.error + '</span>');
+                setStatus($status, tmfsAdmin.i18n.error, 'red');
                 $btn.prop('disabled', false);
             }
         });
@@ -56,6 +99,12 @@ jQuery(document).ready(function($) {
         var $status = $('#stm_test_status');
         var email = $('#stm_test_email').val();
         var lang = $('#stm_test_lang').val();
+
+        // The dropdown lists the cards as they are now, unsaved ones included,
+        // so send that card's content rather than the saved template at `lang`.
+        var $card = getCards().filter(function() {
+            return String($(this).data('index')) === String(lang);
+        }).first();
 
         if (!email) {
             alert(tmfsAdmin.i18n.enterEmail);
@@ -73,17 +122,19 @@ jQuery(document).ready(function($) {
             },
             data: {
                 email: email,
-                lang: lang
+                lang: lang,
+                subject: $card.find('input[name$="[subject]"]').val() || '',
+                body: $card.find('textarea[name$="[body]"]').val() || ''
             },
             success: function(response) {
                 if (response.sent) {
-                    $status.html('<span style="color: green;">' + tmfsAdmin.i18n.testSent + '</span>');
+                    setStatus($status, tmfsAdmin.i18n.testSent, 'green');
                 } else {
-                    $status.html('<span style="color: red;">' + tmfsAdmin.i18n.sendFailed + '</span>');
+                    setStatus($status, tmfsAdmin.i18n.sendFailed, 'red');
                 }
             },
             error: function() {
-                $status.html('<span style="color: red;">' + tmfsAdmin.i18n.error + '</span>');
+                setStatus($status, tmfsAdmin.i18n.error, 'red');
             },
             complete: function() {
                 $btn.prop('disabled', false);
@@ -112,36 +163,36 @@ jQuery(document).ready(function($) {
 
     /**
      * Read the managed categories from the Categories card as {id, name}
-     * objects (unique by name, non-empty, in defined order). The id is the
-     * stable identifier (a real integer, or a temporary "new_*" token for
-     * rows added in the browser and not yet saved).
+     * objects, in defined order. The id is the stable identifier (a real
+     * integer, or a temporary "new_*" token for rows added in the browser and
+     * not yet saved).
+     *
+     * Every row is listed, including one whose name is momentarily empty or
+     * duplicated while being edited: dropping it would reset every template
+     * assigned to it. On save, PHP removes empty rows and merges duplicates
+     * into the first row of that name.
      */
     function getManagedCategories() {
-        var seen = {};
         var list = [];
         $('#tmfs-categories-list .tmfs-category-row').each(function() {
             var id = String($(this).find('.tmfs-category-id').val() || '');
             var name = ($(this).find('.tmfs-category-name').val() || '').trim();
-            var k = name.toLowerCase();
-            if (id && name && !seen[k]) {
-                seen[k] = true;
-                list.push({ id: id, name: name });
+            if (id) {
+                list.push({ id: id, name: name || tmfsAdmin.i18n.unnamedCategory });
             }
         });
         return list;
     }
 
     /**
-     * Look up a managed category name by its id (for building search text).
+     * Map of category id => name, for building search text.
      */
-    function categoryNameById(id) {
-        var hit = null;
+    function categoryNameMap() {
+        var map = {};
         getManagedCategories().forEach(function(c) {
-            if (c.id === String(id)) {
-                hit = c.name;
-            }
+            map[c.id] = c.name;
         });
-        return hit || '';
+        return map;
     }
 
     /**
@@ -256,7 +307,7 @@ jQuery(document).ready(function($) {
     /**
      * Does a card pass the current category filter and search term?
      */
-    function cardMatches($card) {
+    function cardMatches($card, catNames) {
         var catId = String($card.find('.tmfs-template-category').val() || '');
 
         // Category filter (by ID).
@@ -275,7 +326,7 @@ jQuery(document).ready(function($) {
         }
         var hay = [
             $card.find('.tmfs-template-label').val(),
-            catId ? categoryNameById(catId) : '',
+            catId ? (catNames[catId] || '') : '',
             $card.find('.tmfs-template-locale').val(),
             $card.find('input[name*="[payment_link]"]').val(),
             $card.find('input[name*="[subject]"]').val(),
@@ -322,8 +373,9 @@ jQuery(document).ready(function($) {
      */
     function applyView(focusEl) {
         var matched = [];
+        var catNames = categoryNameMap();
         getCards().each(function() {
-            if (cardMatches($(this))) {
+            if (cardMatches($(this), catNames)) {
                 matched.push(this);
             } else {
                 $(this).hide();
@@ -360,14 +412,17 @@ jQuery(document).ready(function($) {
         // Count / no-results message.
         var total = getTemplateCount();
         var $count = $('#tmfs-templates-count');
-        if (searchTerm) {
+        if (searchTerm || categoryFilter) {
             if (matched.length === 0) {
                 $count.text(tmfsAdmin.i18n.noResults);
             } else {
-                $count.text(matched.length + ' / ' + total + ' ' + tmfsAdmin.i18n.templatesUnit);
+                $count.text(tmfsAdmin.i18n.templateCountFiltered
+                    .replace('%1$d', matched.length)
+                    .replace('%2$d', total));
             }
         } else {
-            $count.text(total + ' ' + tmfsAdmin.i18n.templatesUnit);
+            var fmt = total === 1 ? tmfsAdmin.i18n.templateCountOne : tmfsAdmin.i18n.templateCountMany;
+            $count.text(fmt.replace('%d', total));
         }
 
         renderPagination(totalPages);
@@ -478,7 +533,7 @@ jQuery(document).ready(function($) {
 
         // Suffix the label so the duplicate is recognizable.
         var lbl = $src.find('.tmfs-template-label').val();
-        $new.find('.tmfs-template-label').val(lbl ? lbl + tmfsAdmin.i18n.copySuffix : '');
+        $new.find('.tmfs-template-label').val(lbl ? tmfsAdmin.i18n.copyName.replace('%s', lbl) : '');
 
         $new.insertAfter($src);
         rebuildTestDropdown();
@@ -542,19 +597,35 @@ jQuery(document).ready(function($) {
             return;
         }
 
+        // Only the wording is reset. Name, category, locale and Payment Link ID
+        // identify the template; wiping them would detach it from its link, and
+        // an all-empty card is dropped on save.
         var $card = $(this).closest('.stm-template-card');
-        var position = getCards().index($card);
+        var locale = $card.find('.tmfs-template-locale').val();
         var defaults = tmfsAdmin.defaultTemplates;
-        var tmpl = (position < defaults.length) ? defaults[position] : tmfsAdmin.emptyTemplate;
+        var tmpl = defaults[0]; // site-language default when no locale is set
+        defaults.forEach(function(d) {
+            if (locale && d.locale === locale) {
+                tmpl = d;
+            }
+        });
 
-        $card.find('.tmfs-template-label').val(tmpl.label);
-        $card.find('.tmfs-template-locale').val(tmpl.locale);
-        $card.find('input[name*="[payment_link]"]').val(tmpl.payment_link);
         $card.find('input[name*="[subject]"]').val(tmpl.subject);
         $card.find('.tmfs-field-body').val(tmpl.body);
+        isDirty = true;
 
-        rebuildTestDropdown();
         applyView($card[0]);
+    });
+
+    // Structural edits that do not fire input/change on the form.
+    $('#tmfs-templates-container').on('click', '.tmfs-move-up, .tmfs-move-down, .tmfs-copy-template, .tmfs-delete-template', function() {
+        isDirty = true;
+    });
+    $('#tmfs-add-template, #tmfs-add-category').on('click', function() {
+        isDirty = true;
+    });
+    $('#tmfs-categories-list').on('click', '.tmfs-remove-category', function() {
+        isDirty = true;
     });
 
     // Sync label changes to test dropdown

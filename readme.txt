@@ -25,7 +25,7 @@ This plugin receives Stripe webhook events directly and sends emails using WordP
 = Key Features =
 
 * **Automatic Email Sending** - Sends thank-you emails automatically via Stripe Webhook
-* **Multi-language Support** - Up to 10 customizable email templates with locale settings
+* **Multi-language Support** - Up to 100 customizable email templates with locale settings
 * **Smart Language Detection** - Automatically detects customer language from Payment Link ID or locale
 * **Customizable Templates** - Fully customizable email subject and body with placeholders
 * **Custom Sender Settings** - Set custom From email address and sender name
@@ -115,7 +115,10 @@ Check the "Recent Sent Emails" log in the settings page. If you see the transact
 The plugin uses two methods for language detection (in order of priority):
 
 1. **Payment Link ID** - If you create separate Payment Links for JA and EN customers and enter their IDs in settings, the plugin will detect language based on which link was used.
-2. **Locale fallback** - If Payment Link matching fails, it checks the `locale` parameter from the checkout session.
+2. **Locale fallback** - If no Payment Link ID matches, the first template whose locale matches the Checkout Session's `locale` is used (anything other than Japanese counts as EN). Payment Links usually leave the locale on "auto", so in practice this falls through to EN.
+3. **First template** - If nothing else matches, the first template is used.
+
+For reliable results, give each Payment Link its own template.
 
 = Can I use this with WooCommerce? =
 
@@ -131,7 +134,7 @@ This plugin is designed specifically for Stripe Payment Links (standalone checko
 
 = Why should I use separate Payment Links for each language? =
 
-Using separate Payment Links is the most reliable way to detect customer language. The Payment Link ID is included in every webhook event, so language detection never fails. Using the same Payment Link with locale detection as fallback works but may be less reliable.
+Using separate Payment Links is the most reliable way to detect customer language. The Payment Link ID is included in every webhook event, so language detection never fails. The locale fallback rarely helps with Payment Links, because they usually leave the Checkout locale on "auto".
 
 = What placeholders are available in email templates? =
 
@@ -139,13 +142,17 @@ Using separate Payment Links is the most reliable way to detect customer languag
 * `{session_id}` - Stripe Checkout Session ID (for reference/support)
 * `{email}` - Customer's email address
 
+= Are emails sent for free purchases (100% discount codes, free trials)? =
+
+Not by default. Stripe marks these checkouts "no payment required"; turn on "Free purchases" in the plugin settings to send the email for them too.
+
 = Will emails be sent for test mode purchases? =
 
 Yes, if you configure the test mode webhook signing secret. Use this to verify your setup before going live.
 
 = What happens if wp_mail() fails? =
 
-The webhook will still return 200 to Stripe (to prevent retries), but the email won't be sent. Consider using an SMTP plugin (like WP Mail SMTP) for more reliable email delivery.
+The webhook still returns 200 to Stripe, so Stripe does not retry on its own, and the purchase is not recorded in the log. Resend the event from Stripe Dashboard > Developers > Webhooks to try again. Consider using an SMTP plugin (like WP Mail SMTP) for more reliable email delivery.
 
 = Why are my emails not being delivered even though the webhook shows "sent: true"? =
 
@@ -224,22 +231,26 @@ The plugin provides filter hooks for customization:
 = Example: Custom language detection =
 
     add_filter( 'tmfs_detect_language', function( $lang, $session ) {
-        // Custom logic based on session data
-        if ( strpos( $session['customer_details']['email'], '.jp' ) !== false ) {
-            return 'ja';
+        // Return a template index as a string: '0' is the first template
+        // in the settings screen, '1' the second, and so on.
+        $email = strtolower( $session['customer_details']['email'] ?? '' );
+        if ( substr( $email, -3 ) === '.jp' ) {
+            return '1';
         }
         return $lang;
     }, 10, 2 );
 
+Since 1.1.0 this filter receives and returns a template index, not a language code. Returning `'ja'` or `'en'` selects the first template.
+
 = Database Table =
 
-The plugin creates a table `{prefix}stm_sent_emails` to track sent emails:
+The plugin creates a table `{prefix}tmfs_sent_emails` to track sent emails:
 
 * `id` - Auto-increment ID
 * `session_id` - Stripe Checkout Session ID (unique)
 * `email` - Customer email address
-* `lang` - Detected language (ja/en)
-* `product_name` - Product name (if available)
+* `lang` - Index of the template used ("0" = first template)
+* `product_name` - Reserved for future use (currently empty)
 * `amount` - Purchase amount
 * `sent_at` - Timestamp when email was sent
 
@@ -262,16 +273,16 @@ This plugin stores email delivery logs in your WordPress database to prevent dup
 
 = What Data Is Stored =
 
-The plugin stores the following data in a custom database table (`{prefix}stm_sent_emails`):
+The plugin stores the following data in a custom database table (`{prefix}tmfs_sent_emails`):
 
 * `session_id` - Stripe Checkout Session ID (used as unique key for duplicate prevention)
 * `email` - Customer email address (to confirm which customer received the email)
-* `lang` - Detected language code, ja or en (to record which template was used)
+* `lang` - Index of the template used, "0" for the first (to record which template was sent)
 * `product_name` - Product name (reserved for future use)
 * `amount` - Purchase amount and currency (for administrator reference)
 * `sent_at` - Timestamp when the email was sent
 
-Additionally, plugin settings (webhook secret, email templates, Payment Link IDs, etc.) are stored in the `wp_options` table under the key `stm_settings`.
+Additionally, plugin settings (webhook secret, email templates, Payment Link IDs, etc.) are stored in the `wp_options` table under the key `tmfs_settings`, and the log table's schema version under `tmfs_db_version`.
 
 = Purpose =
 
@@ -282,7 +293,7 @@ Additionally, plugin settings (webhook secret, email templates, Payment Link IDs
 = Data Retention =
 
 * Email logs are stored indefinitely by default
-* Administrators can manually delete individual records via database access
+* Records for a given email address can be deleted with Tools > Erase Personal Data
 * **All data (logs and settings) is automatically removed when uninstalling the plugin** via the WordPress admin
 
 = External Services =
@@ -295,7 +306,8 @@ Additionally, plugin settings (webhook secret, email templates, Payment Link IDs
 
 * Customer email addresses are stored for the legitimate business purpose of preventing duplicate emails and maintaining delivery records
 * You should disclose this data storage in your site's privacy policy
-* Data can be exported or deleted upon customer request via direct database access
+* Logged data for an email address can be exported and erased with WordPress's built-in privacy tools (Tools > Export Personal Data / Erase Personal Data)
+* Erasing a customer's records also removes the duplicate guard for those purchases, so a manual redelivery of that event from Stripe would send the email again
 
 == Changelog ==
 

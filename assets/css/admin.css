@@ -320,6 +320,11 @@
 }
 
 /* Responsive */
+.tmfs-session-id {
+    font-size: 11px;
+    word-break: break-all;
+}
+
 @media screen and (max-width: 782px) {
     .stm-webhook-url {
         max-width: 100%;

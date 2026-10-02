@@ -23,7 +23,6 @@
  * License:           GPL-2.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       thanks-mail-for-stripe
- * Domain Path:       /languages
  */
 
 // Prevent direct access
@@ -117,6 +116,23 @@ final class TMFS_Thanks_Mail
     const MAX_TEMPLATES = 100;
 
     /**
+     * Schema version of the sent-emails table, stored in `tmfs_db_version`.
+     * Bump it when the CREATE TABLE statement changes.
+     *
+     * @since 1.2.1
+     * @var string
+     */
+    const DB_VERSION = '1';
+
+    /**
+     * Failed signature checks allowed per IP per minute before answering 429.
+     *
+     * @since 1.2.1
+     * @var int
+     */
+    const MAX_SIGNATURE_FAILURES = 10;
+
+    /**
      * Get singleton instance.
      *
      * @since 1.0.0
@@ -143,11 +159,22 @@ final class TMFS_Thanks_Mail
      */
     private function init_hooks(): void
     {
-        // Activation/Deactivation
+        // Activation, plus a schema check for installs that never ran it
+        // (multisite subsites created later, sites copied without activating).
         register_activation_hook(__FILE__, [$this, 'activate']);
-        register_deactivation_hook(__FILE__, [$this, 'deactivate']);
+        add_action('plugins_loaded', [$this, 'maybe_create_table']);
 
-        // Translations
+        /*
+         * Nothing loads translations. The catalogue is not shipped:
+         * WordPress.org builds it from translate.wordpress.org and serves it into
+         * wp-content/languages/plugins/, which core's just-in-time loader reads
+         * without being asked. Strings added since the published pack was built
+         * read English until GlotPress catches up; that trade was made on purpose.
+         */
+
+        // Privacy tools (Tools → Export / Erase Personal Data)
+        add_filter('wp_privacy_personal_data_exporters', [$this, 'register_privacy_exporter']);
+        add_filter('wp_privacy_personal_data_erasers', [$this, 'register_privacy_eraser']);
 
         // Admin
         if (is_admin()) {
@@ -162,22 +189,39 @@ final class TMFS_Thanks_Mail
 
     }
 
-    /*
-     * Nothing loads translations any more. The catalogue is not shipped:
-     * WordPress.org builds it from translate.wordpress.org and serves it into
-     * wp-content/languages/plugins/, which core's just-in-time loader reads
-     * without being asked.
-     *
-     * This method existed to make the bundled .mo win over an older published
-     * pack, so that strings added since that pack was built still resolved.
-     * With nothing bundled they read English until GlotPress catches up, and
-     * that was the trade made when the bundle was dropped.
-     */
-
     /**
      * Plugin activation
      */
     public function activate(): void
+    {
+        $this->create_table();
+
+        // Set default options if not exists
+        if (!get_option(self::OPTION_NAME)) {
+            $defaults = $this->get_default_settings();
+            update_option(self::OPTION_NAME, $defaults);
+        }
+    }
+
+    /**
+     * Create the sent-emails table when the stored schema version is behind.
+     *
+     * The activation hook alone misses network-activated subsites created
+     * later and sites copied without reactivating. Without the table the
+     * duplicate guard cannot work, so this runs on every load; it costs one
+     * autoloaded option read.
+     */
+    public function maybe_create_table(): void
+    {
+        if (get_option('tmfs_db_version') !== self::DB_VERSION) {
+            $this->create_table();
+        }
+    }
+
+    /**
+     * Create or update the sent-emails table via dbDelta.
+     */
+    private function create_table(): void
     {
         global $wpdb;
 
@@ -201,20 +245,7 @@ final class TMFS_Thanks_Mail
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
         dbDelta($sql);
 
-        // Set default options if not exists
-        if (!get_option(self::OPTION_NAME)) {
-            $defaults = $this->get_default_settings();
-            update_option(self::OPTION_NAME, $defaults);
-        }
-    }
-
-    /**
-     * Plugin deactivation
-     */
-    public function deactivate(): void
-    {
-        // No cleanup needed on deactivation
-        // Data is preserved for reactivation
+        update_option('tmfs_db_version', self::DB_VERSION);
     }
 
     /**
@@ -225,6 +256,10 @@ final class TMFS_Thanks_Mail
         return [
             // General
             'enabled' => true,
+            // Whether purchases that needed no payment (100% discount codes,
+            // free trials) also get the email. Off by default: before 1.2.1
+            // they never did.
+            'send_no_payment_required' => false,
             'webhook_secret' => '',
             'brand_name' => get_bloginfo('name'),
             'from_email' => get_option('admin_email'),
@@ -310,21 +345,6 @@ If you didn\'t make this purchase, please reply to this email.';
                 'subject'      => $subject_ja,
                 'body'         => $body_ja,
             ],
-        ];
-    }
-
-    /**
-     * Get an empty template structure (for JS cloning)
-     */
-    public function get_empty_template(): array
-    {
-        return [
-            'label'        => '',
-            'category'     => 0,
-            'locale'       => '',
-            'payment_link' => '',
-            'subject'      => '',
-            'body'         => '',
         ];
     }
 
@@ -501,6 +521,7 @@ If you didn\'t make this purchase, please reply to this email.';
 
         // General
         $sanitized['enabled'] = !empty($input['enabled']);
+        $sanitized['send_no_payment_required'] = !empty($input['send_no_payment_required']);
         $sanitized['webhook_secret'] = sanitize_text_field($input['webhook_secret'] ?? '');
         $sanitized['brand_name'] = sanitize_text_field($input['brand_name'] ?? '');
         $sanitized['from_email'] = sanitize_email($input['from_email'] ?? '');
@@ -531,14 +552,18 @@ If you didn\'t make this purchase, please reply to this email.';
                 if ($name === '') {
                     continue;
                 }
+                $submitted_id = isset($row['id']) ? trim((string) $row['id']) : '';
+
+                // A duplicate name merges into the first row with that name, so
+                // templates assigned to either keep a category.
                 $key = function_exists('mb_strtolower') ? mb_strtolower($name) : strtolower($name);
                 if (isset($seen_categories[$key])) {
+                    if ($submitted_id !== '' && !isset($category_id_map[$submitted_id])) {
+                        $category_id_map[$submitted_id] = $seen_categories[$key];
+                    }
                     continue;
                 }
-                $seen_categories[$key] = true;
-
-                $submitted_id = isset($row['id']) ? trim((string) $row['id']) : '';
-                if ($submitted_id !== '' && ctype_digit($submitted_id) && !isset($used_category_ids[(int) $submitted_id])) {
+                if ($submitted_id !== '' && ctype_digit($submitted_id) && (int) $submitted_id > 0 && !isset($used_category_ids[(int) $submitted_id])) {
                     $final_id = (int) $submitted_id;
                 } else {
                     $final_id = $next_category_id++;
@@ -548,6 +573,7 @@ If you didn\'t make this purchase, please reply to this email.';
                 }
 
                 $used_category_ids[$final_id] = true;
+                $seen_categories[$key] = $final_id;
                 if ($submitted_id !== '') {
                     $category_id_map[$submitted_id] = $final_id;
                 }
@@ -575,7 +601,7 @@ If you didn\'t make this purchase, please reply to this email.';
                 $body    = sanitize_textarea_field($tmpl['body'] ?? '');
 
                 // Skip completely empty templates
-                if ('' === $label && '' === $link && '' === $subject) {
+                if ('' === $label && '' === $link && '' === $subject && '' === $body) {
                     continue;
                 }
 
@@ -643,12 +669,11 @@ If you didn\'t make this purchase, please reply to this email.';
             'resetUrl'         => rest_url(self::REST_NAMESPACE . '/reset'),
             'maxTemplates'     => self::MAX_TEMPLATES,
             'defaultTemplates' => $this->get_default_templates(),
-            'emptyTemplate'    => $this->get_empty_template(),
             'i18n'             => [
                 'copied'               => __('Copied!', 'thanks-mail-for-stripe'),
                 'show'                 => __('Show', 'thanks-mail-for-stripe'),
                 'hide'                 => __('Hide', 'thanks-mail-for-stripe'),
-                'confirmReset'         => __('Are you sure you want to reset all settings to defaults?', 'thanks-mail-for-stripe'),
+                'confirmReset'         => __('Reset all settings to their defaults? This also clears the Webhook Signing Secret, so Stripe deliveries will fail until you enter it again. The sent-email log is kept.', 'thanks-mail-for-stripe'),
                 'resetDone'            => __('Settings have been reset.', 'thanks-mail-for-stripe'),
                 'enterEmail'           => __('Please enter an email address', 'thanks-mail-for-stripe'),
                 'sending'              => __('Sending...', 'thanks-mail-for-stripe'),
@@ -659,15 +684,22 @@ If you didn\'t make this purchase, please reply to this email.';
                 'maxReached'           => __('Maximum number of templates reached.', 'thanks-mail-for-stripe'),
                 'templateLabel'        => __('Template', 'thanks-mail-for-stripe'),
                 'cannotDeleteAll'      => __('At least one template is required.', 'thanks-mail-for-stripe'),
-                'confirmResetTemplate' => __('Are you sure you want to reset this template to defaults?', 'thanks-mail-for-stripe'),
+                'confirmResetTemplate' => __('Replace this template\'s subject and body with the default text for its locale? Name, category, locale and Payment Link ID are kept.', 'thanks-mail-for-stripe'),
                 'prev'                 => __('Previous', 'thanks-mail-for-stripe'),
                 'next'                 => __('Next', 'thanks-mail-for-stripe'),
                 'noResults'            => __('No templates match your search.', 'thanks-mail-for-stripe'),
-                'templatesUnit'        => __('templates', 'thanks-mail-for-stripe'),
+                /* translators: %d: number of templates */
+                'templateCountOne'     => _n('%d template', '%d templates', 1, 'thanks-mail-for-stripe'),
+                /* translators: %d: number of templates */
+                'templateCountMany'    => _n('%d template', '%d templates', 2, 'thanks-mail-for-stripe'),
+                /* translators: 1: number of matching templates, 2: total number of templates */
+                'templateCountFiltered' => __('%1$d of %2$d templates', 'thanks-mail-for-stripe'),
                 'allCategories'        => __('All categories', 'thanks-mail-for-stripe'),
                 'uncategorized'        => __('Uncategorized', 'thanks-mail-for-stripe'),
                 'noCategory'           => __('— No category —', 'thanks-mail-for-stripe'),
-                'copySuffix'           => __(' (copy)', 'thanks-mail-for-stripe'),
+                'unnamedCategory'      => __('(unnamed category)', 'thanks-mail-for-stripe'),
+                /* translators: %s: name of the template being duplicated */
+                'copyName'             => __('%s (copy)', 'thanks-mail-for-stripe'),
             ],
         ]);
     }
@@ -717,6 +749,14 @@ If you didn\'t make this purchase, please reply to this email.';
                     'default'           => '0',
                     'sanitize_callback' => 'sanitize_text_field',
                 ],
+                // The template as currently on screen, so unsaved edits and
+                // newly added templates can be tested before saving.
+                'subject' => [
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+                'body' => [
+                    'sanitize_callback' => 'sanitize_textarea_field',
+                ],
             ],
         ]);
 
@@ -734,20 +774,6 @@ If you didn\'t make this purchase, please reply to this email.';
      */
     public function handle_webhook(\WP_REST_Request $request): \WP_REST_Response
     {
-        // Rate limiting: 10 requests per 60 seconds per IP
-        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- validated by FILTER_VALIDATE_IP
-        $client_ip = isset( $_SERVER['REMOTE_ADDR'] )
-            ? filter_var( wp_unslash( $_SERVER['REMOTE_ADDR'] ), FILTER_VALIDATE_IP )
-            : '';
-        if (! empty($client_ip)) {
-            $transient_key = 'tmfs_rate_' . md5($client_ip);
-            $count = (int) get_transient($transient_key);
-            if ($count >= 10) {
-                return new \WP_REST_Response(['error' => 'Rate limit exceeded'], 429);
-            }
-            set_transient($transient_key, $count + 1, 60);
-        }
-
         $settings = $this->get_settings();
 
         // Check if enabled
@@ -764,8 +790,14 @@ If you didn\'t make this purchase, please reply to this email.';
         $payload = $request->get_body();
         $sig_header = $request->get_header('stripe-signature');
 
-        // Verify signature
+        // Verify signature. Only failures count toward the rate limit, so
+        // genuine Stripe deliveries are never throttled -- not during a burst
+        // of sales, not when every event type is subscribed, and not behind a
+        // proxy where all requests share one REMOTE_ADDR.
         if (!$this->verify_stripe_signature($payload, $sig_header, $secret)) {
+            if ($this->record_signature_failure()) {
+                return new \WP_REST_Response(['error' => 'Rate limit exceeded'], 429);
+            }
             return new \WP_REST_Response(['error' => 'Invalid signature'], 400);
         }
 
@@ -786,9 +818,11 @@ If you didn\'t make this purchase, please reply to this email.';
             return new \WP_REST_Response(['ok' => true, 'ignored' => $type], 200);
         }
 
+        // A signed event that lacks what we need will look the same on every
+        // retry, so answer 200 rather than have Stripe resend it for 3 days.
         $session = $event['data']['object'] ?? null;
         if (!is_array($session)) {
-            return new \WP_REST_Response(['error' => 'Missing session data'], 400);
+            return new \WP_REST_Response(['ok' => true, 'ignored' => 'missing_session_data'], 200);
         }
 
         // Extract and sanitize data
@@ -797,37 +831,46 @@ If you didn\'t make this purchase, please reply to this email.';
         $payment_status = isset($session['payment_status']) ? sanitize_key($session['payment_status']) : '';
 
         if (empty($session_id) || empty($email)) {
-            return new \WP_REST_Response(['error' => 'Missing session_id or email'], 400);
+            return new \WP_REST_Response(['ok' => true, 'ignored' => 'missing_session_id_or_email'], 200);
         }
 
-        // Only send when paid
-        if ($payment_status !== 'paid') {
+        // Send once the purchase is settled. 'unpaid' is an async method such
+        // as konbini still pending; checkout.session.async_payment_succeeded
+        // follows when it clears. 'no_payment_required' (100% discount codes,
+        // free trials) is sent only when the site opts in.
+        if ($payment_status === 'no_payment_required' && empty($settings['send_no_payment_required'])) {
+            return new \WP_REST_Response(['ok' => true, 'status' => 'no_payment_required_skipped'], 200);
+        }
+        if (!in_array($payment_status, ['paid', 'no_payment_required'], true)) {
             return new \WP_REST_Response(['ok' => true, 'status' => 'not_paid'], 200);
-        }
-
-        // Check for duplicate (idempotency)
-        if ($this->is_already_sent($session_id)) {
-            return new \WP_REST_Response(['ok' => true, 'already_sent' => true], 200);
         }
 
         // Detect language
         $lang = $this->detect_language($session, $settings);
 
-        // Get and sanitize product info
         $amount = '';
-        if (!empty($session['amount_total']) && !empty($session['currency'])) {
-            $currency = sanitize_text_field(strtoupper($session['currency']));
-            $amount_total = absint($session['amount_total']);
-            $amount = $currency . ' ' . number_format($amount_total / 100, 2);
+        if (isset($session['amount_total'], $session['currency']) && is_numeric($session['amount_total'])) {
+            $amount = $this->format_amount(absint($session['amount_total']), (string) $session['currency']);
         }
 
-        // Send email
+        // Claim the session before sending. The UNIQUE key on session_id makes
+        // this atomic, so two deliveries of the same event arriving together
+        // cannot both send.
+        $claimed = $this->claim_session($session_id, $email, $lang, $amount);
+        if ($claimed === null) {
+            // Table missing or unwritable: refuse rather than send without a
+            // duplicate guard. A non-2xx lets Stripe retry once it is fixed.
+            return new \WP_REST_Response(['error' => 'Could not record session'], 500);
+        }
+        if ($claimed === false) {
+            return new \WP_REST_Response(['ok' => true, 'already_sent' => true], 200);
+        }
+
         $sent = $this->send_thanks_email($email, $lang, $session_id, $settings);
 
-        // Record to database only if email was sent successfully
-        if ($sent) {
-            $this->record_sent_email($session_id, $email, $lang, '', $amount);
-        } else {
+        // Release the claim on failure so a manual redelivery from Stripe can retry.
+        if (!$sent) {
+            $this->release_session($session_id);
             if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
                 // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- intentional debug logging
                 error_log( '[Thanks Mail for Stripe] Failed to send email for session: ' . $session_id );
@@ -847,17 +890,22 @@ If you didn\'t make this purchase, please reply to this email.';
      */
     public function handle_test(\WP_REST_Request $request): \WP_REST_Response
     {
-        $email = sanitize_email($request->get_param('email'));
-        $lang = sanitize_text_field($request->get_param('lang') ?? 'ja');
-
-        if (empty($email)) {
-            return new \WP_REST_Response(['error' => 'Email required'], 400);
-        }
+        // Already sanitized and validated by the route's args schema.
+        $email = $request->get_param('email');
+        $lang = (string) $request->get_param('lang');
 
         $settings = $this->get_settings();
         $session_id = 'TEST_' . wp_generate_uuid4();
 
-        $sent = $this->send_thanks_email($email, $lang, $session_id, $settings);
+        $template = null;
+        if ($request->has_param('subject') || $request->has_param('body')) {
+            $template = [
+                'subject' => (string) $request->get_param('subject'),
+                'body'    => (string) $request->get_param('body'),
+            ];
+        }
+
+        $sent = $this->send_thanks_email($email, $lang, $session_id, $settings, $template);
 
         return new \WP_REST_Response([
             'ok' => true,
@@ -974,39 +1022,94 @@ If you didn\'t make this purchase, please reply to this email.';
     }
 
     /**
-     * Check if email already sent
+     * Count a failed signature check against the client IP.
+     *
+     * @return bool True when the IP has exceeded the limit and should get 429.
      */
-    private function is_already_sent(string $session_id): bool
+    private function record_signature_failure(): bool
     {
-        global $wpdb;
-        $table = $wpdb->prefix . self::TABLE_NAME;
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- validated by FILTER_VALIDATE_IP
+        $client_ip = isset( $_SERVER['REMOTE_ADDR'] )
+            ? filter_var( wp_unslash( $_SERVER['REMOTE_ADDR'] ), FILTER_VALIDATE_IP )
+            : '';
+        if (empty($client_ip)) {
+            return false;
+        }
 
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Custom table name from $wpdb->prefix; caching not needed for idempotency check
-        $exists = $wpdb->get_var($wpdb->prepare(
-            "SELECT session_id FROM {$table} WHERE session_id = %s",
-            $session_id
-        ));
+        $transient_key = 'tmfs_rate_' . md5($client_ip);
+        $count = (int) get_transient($transient_key) + 1;
+        set_transient($transient_key, $count, 60);
 
-        return !empty($exists);
+        return $count > self::MAX_SIGNATURE_FAILURES;
     }
 
     /**
-     * Record sent email
+     * Format a Stripe amount (smallest currency unit) for the log.
+     *
+     * Stripe sends zero-decimal currencies such as JPY in whole units and a
+     * few currencies in thousandths, so dividing everything by 100 is wrong.
+     *
+     * @param int    $amount   Amount in the currency's smallest unit.
+     * @param string $currency ISO currency code.
+     * @return string e.g. "JPY 1,000" or "USD 12.50".
      */
-    private function record_sent_email(string $session_id, string $email, string $lang, string $product_name, string $amount): void
+    private function format_amount(int $amount, string $currency): string
+    {
+        $currency = strtoupper(sanitize_key($currency));
+
+        // https://docs.stripe.com/currencies#zero-decimal
+        $zero_decimal  = ['BIF', 'CLP', 'DJF', 'GNF', 'JPY', 'KMF', 'KRW', 'MGA', 'PYG', 'RWF', 'UGX', 'VND', 'VUV', 'XAF', 'XOF', 'XPF'];
+        $three_decimal = ['BHD', 'JOD', 'KWD', 'OMR', 'TND'];
+
+        if (in_array($currency, $zero_decimal, true)) {
+            $decimals = 0;
+        } elseif (in_array($currency, $three_decimal, true)) {
+            $decimals = 3;
+        } else {
+            $decimals = 2;
+        }
+
+        return $currency . ' ' . number_format($amount / (10 ** $decimals), $decimals);
+    }
+
+    /**
+     * Atomically claim a session before sending its email.
+     *
+     * @return bool|null True if claimed, false if already claimed (duplicate),
+     *                   null if the row could not be written at all.
+     */
+    private function claim_session(string $session_id, string $email, string $lang, string $amount): ?bool
     {
         global $wpdb;
         $table = $wpdb->prefix . self::TABLE_NAME;
 
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Custom table insert
-        $wpdb->insert($table, [
-            'session_id' => $session_id,
-            'email' => $email,
-            'lang' => $lang,
-            'product_name' => $product_name,
-            'amount' => $amount,
-            'sent_at' => current_time('mysql'),
-        ], ['%s', '%s', '%s', '%s', '%s', '%s']);
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Custom table name from $wpdb->prefix; INSERT IGNORE is the duplicate guard
+        $result = $wpdb->query($wpdb->prepare(
+            "INSERT IGNORE INTO {$table} (session_id, email, lang, amount, sent_at) VALUES (%s, %s, %s, %s, %s)",
+            $session_id,
+            $email,
+            $lang,
+            $amount,
+            current_time('mysql')
+        ));
+
+        if ($result === false) {
+            return null;
+        }
+
+        return $result === 1;
+    }
+
+    /**
+     * Drop a claim whose email failed to send.
+     */
+    private function release_session(string $session_id): void
+    {
+        global $wpdb;
+        $table = $wpdb->prefix . self::TABLE_NAME;
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table delete
+        $wpdb->delete($table, ['session_id' => $session_id], ['%s']);
     }
 
     /**
@@ -1016,15 +1119,16 @@ If you didn\'t make this purchase, please reply to this email.';
      * @param string $lang       Template index (string).
      * @param string $session_id Stripe session ID.
      * @param array  $settings   Plugin settings.
+     * @param array|null $template Subject/body to use instead of the saved template at $lang.
      * @return bool Whether the email was sent successfully.
      */
-    private function send_thanks_email(string $to, string $lang, string $session_id, array $settings): bool
+    private function send_thanks_email(string $to, string $lang, string $session_id, array $settings, ?array $template = null): bool
     {
         if (! is_email($to)) {
             return false;
         }
 
-        $template   = $this->get_template($settings, $lang);
+        $template   = $template ?? $this->get_template($settings, $lang);
         $brand      = $settings['brand_name'] ?: get_bloginfo('name');
         $from_email = $settings['from_email'] ?: get_option('admin_email');
         $from_name  = $settings['from_name'] ?: get_bloginfo('name');
@@ -1089,16 +1193,16 @@ If you didn\'t make this purchase, please reply to this email.';
     /**
      * Get sent emails log
      */
-    public function get_sent_emails(int $limit = 50, int $offset = 0): array
+    public function get_sent_emails(int $limit = 50): array
     {
         global $wpdb;
         $table = $wpdb->prefix . self::TABLE_NAME;
 
+        // id, not sent_at: sent_at is local time and can step backwards at a DST change.
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Custom table name from $wpdb->prefix; admin display only
         return $wpdb->get_results($wpdb->prepare(
-            "SELECT * FROM {$table} ORDER BY sent_at DESC LIMIT %d OFFSET %d",
-            $limit,
-            $offset
+            "SELECT * FROM {$table} ORDER BY id DESC LIMIT %d",
+            $limit
         ), ARRAY_A);
     }
 
@@ -1112,6 +1216,90 @@ If you didn\'t make this purchase, please reply to this email.';
 
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Custom table name from $wpdb->prefix
         return (int) $wpdb->get_var("SELECT COUNT(*) FROM {$table}");
+    }
+
+    /**
+     * Register the sent-email log with Tools → Export Personal Data.
+     */
+    public function register_privacy_exporter(array $exporters): array
+    {
+        $exporters['thanks-mail-for-stripe'] = [
+            'exporter_friendly_name' => __('Thanks Mail for Stripe', 'thanks-mail-for-stripe'),
+            'callback'               => [$this, 'export_personal_data'],
+        ];
+        return $exporters;
+    }
+
+    /**
+     * Register the sent-email log with Tools → Erase Personal Data.
+     */
+    public function register_privacy_eraser(array $erasers): array
+    {
+        $erasers['thanks-mail-for-stripe'] = [
+            'eraser_friendly_name' => __('Thanks Mail for Stripe', 'thanks-mail-for-stripe'),
+            'callback'             => [$this, 'erase_personal_data'],
+        ];
+        return $erasers;
+    }
+
+    /**
+     * Export the log rows for one email address.
+     *
+     * @param string $email_address Address being exported.
+     * @return array Exporter response.
+     */
+    public function export_personal_data(string $email_address): array
+    {
+        global $wpdb;
+        $table = $wpdb->prefix . self::TABLE_NAME;
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Custom table name from $wpdb->prefix
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT id, session_id, email, amount, sent_at FROM {$table} WHERE email = %s ORDER BY id",
+            $email_address
+        ), ARRAY_A);
+
+        $items = [];
+        foreach ((array) $rows as $row) {
+            $items[] = [
+                'group_id'    => 'thanks-mail-for-stripe',
+                'group_label' => __('Thank-you emails sent', 'thanks-mail-for-stripe'),
+                'item_id'     => 'tmfs-sent-' . $row['id'],
+                'data'        => [
+                    ['name' => __('Email', 'thanks-mail-for-stripe'), 'value' => $row['email']],
+                    ['name' => __('Session ID', 'thanks-mail-for-stripe'), 'value' => $row['session_id']],
+                    ['name' => __('Amount', 'thanks-mail-for-stripe'), 'value' => $row['amount']],
+                    ['name' => __('Date', 'thanks-mail-for-stripe'), 'value' => $row['sent_at']],
+                ],
+            ];
+        }
+
+        return ['data' => $items, 'done' => true];
+    }
+
+    /**
+     * Erase the log rows for one email address.
+     *
+     * Erasing also removes the duplicate guard for those sessions, so a
+     * manual redelivery from Stripe would send again.
+     *
+     * @param string $email_address Address being erased.
+     * @return array Eraser response.
+     */
+    public function erase_personal_data(string $email_address): array
+    {
+        global $wpdb;
+        $table = $wpdb->prefix . self::TABLE_NAME;
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table delete
+        $deleted = $wpdb->delete($table, ['email' => $email_address], ['%s']);
+
+        return [
+            'items_removed'  => (bool) $deleted,
+            'items_retained' => false,
+            'messages'       => [],
+            'done'           => true,
+        ];
     }
 }
 

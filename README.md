@@ -7,7 +7,7 @@ WordPress で Stripe Payment Links の決済完了後、カスタマイズされ
 ## Features
 
 - **Stripe Payment Links 対応** — Stripe ダッシュボードで作成したペイメントリンクの決済に対応
-- **10種類の動的テンプレート** — Payment Link ID または言語（ロケール）で自動マッチング
+- **最大100種類の動的テンプレート** — Payment Link ID または言語（ロケール）で自動マッチング
 - **日本語・英語・多言語対応** — i18n 準備完了
 - **Webhook 統合** — Stripe イベントを自動監視、決済完了で即座にメール送信
 - **カスタマイズ可能** — テンプレート変数（`{brand}` / `{session_id}` / `{email}`）を件名・本文に動的挿入
@@ -40,7 +40,7 @@ WordPress で Stripe Payment Links の決済完了後、カスタマイズされ
 1. プラグイン有効化後、管理画面の **Thanks Mail for Stripe** 設定ページを開く
 2. 設定ページに表示される **Webhook URL** をコピーし、Stripe ダッシュボードで Webhook エンドポイントとして登録（下記「Webhook の設定」参照）
 3. Stripe が発行した **署名シークレット（`whsec_...`）** を設定ページの **Webhook Secret** 欄に貼り付ける
-4. 送信元（From）・ブランド名、および Payment Link ごとのメールテンプレート（最大10種類）を設定して保存
+4. 送信元（From）・ブランド名、および Payment Link ごとのメールテンプレート（最大100種類）を設定して保存
 5. WordPress のメーラー設定（`wp_mail()` が正常に動作すること）を確認
 
 詳しくは [導入ガイド](https://raplsworks.com/thanks-mail-for-stripe/) を参照。
