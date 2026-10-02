@@ -80,7 +80,7 @@ This plugin receives Stripe webhook events directly and sends emails using WordP
 
 == Screenshots ==
 
-1. Settings page - Quick setup guide, status (enable, free purchases, Webhook URL), Stripe signing secret, and sender settings
+1. Settings page - Quick setup guide and status (enable, free purchases, Webhook URL, emails sent)
 2. Email templates - Categories, search and category filter, and per-template Payment Link ID, subject and body
 3. Test email and settings reset
 4. Recent sent emails - Date, customer email, template used, and Checkout Session ID
