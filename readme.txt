@@ -5,7 +5,7 @@ Donate link: https://buymeacoffee.com/rapls
 Tags: stripe, payment, email, webhook, notifications
 Requires at least: 5.0
 Tested up to: 7.1
-Stable tag: 1.2.0
+Stable tag: 1.2.1
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -311,6 +311,26 @@ Additionally, plugin settings (webhook secret, email templates, Payment Link IDs
 
 == Changelog ==
 
+= 1.2.1 =
+* New: "Free purchases" setting - optionally send the email for checkouts that needed no payment (100% discount codes, free trials). Off by default
+* New: Sent-email log is available to Tools > Export Personal Data and Erase Personal Data
+* Fixed: Webhook rate limiting could reject genuine Stripe deliveries (several events per sale, or all requests sharing one IP behind a proxy). Only failed signature checks are now counted
+* Fixed: Two copies of the same event arriving at once could send the email twice
+* Fixed: Amounts in zero-decimal currencies such as JPY were logged 100 times too small (JPY 1000 showed as "JPY 10.00"). Existing log rows are not changed
+* Fixed: Clearing a category name while renaming it removed that category from every template
+* Fixed: "Reset to default" on a template cleared its Payment Link ID, and on templates after #2 emptied the template so it was deleted on save. It now replaces only the subject and body
+* Fixed: Test email used the saved template, so unsaved edits and newly added templates were not what got sent
+* Fixed: Copy button did nothing on admin screens served over plain HTTP
+* Fixed: Templates with only a body were deleted on save
+* Improved: The log table is created automatically if missing (e.g. multisite subsites added after network activation)
+* Improved: Signed events missing session data or an email address answer 200, so Stripe stops retrying them
+* Improved: Log shows the template name, full Session ID and a localized date
+* Improved: Warning before leaving the settings page with unsaved changes
+* Improved: Clearer explanations of how a template is chosen, what disabling does, and what Reset Settings clears
+* Docs: Fixed the tmfs_detect_language example (it must return a template index) and outdated table/option names
+* Changed: Translations are no longer bundled; WordPress.org language packs are used. Strings added in this release show in English until their translation is published on translate.wordpress.org
+* Tested up to WordPress 7.1
+
 = 1.2.0 =
 * New: Configure up to 100 email templates (raised from 10)
 * New: Template categories - define a managed category list and assign each template to one; renaming a category propagates to all templates that use it
@@ -381,6 +401,9 @@ Additionally, plugin settings (webhook secret, email templates, Payment Link IDs
 * Japanese translation included
 
 == Upgrade Notice ==
+
+= 1.2.1 =
+Fixes rate limiting that could reject genuine Stripe webhooks, possible duplicate sends, and JPY amounts in the log. Adds an optional setting for free (no-payment) purchases.
 
 = 1.2.0 =
 Manage up to 100 templates with categories, search, filtering, pagination, reordering, and one-click duplication. Existing settings are migrated automatically.
